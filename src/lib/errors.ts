@@ -3,6 +3,8 @@ export function errorMessage(error: {
   code?: string;
 }): string {
   const message = error.message ?? "";
+  if (error.code === "PT410")
+    return "Esta pizarra venció por inactividad o ya no existe. Creá una nueva para seguir jugando.";
   if (/anonymous.*(disabled|not allowed)/i.test(message))
     return "El proyecto todavía no permite sesiones anónimas. Activá Anonymous Sign-Ins en Supabase.";
   if (/fetch|network|offline|timeout|abort/i.test(message))
@@ -25,3 +27,4 @@ export function errorMessage(error: {
     return "La sesión venció. Recargá la página para volver a entrar.";
   return "No pudimos completar la operación. Reintentá en unos instantes.";
 }
+export class BoardExpiredError extends Error {}

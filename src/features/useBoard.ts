@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { client, enterBoard, rpc, session, snapshot } from "../lib/api";
+import { client, rpc, session, snapshot } from "../lib/api";
+import { BoardExpiredError } from "../lib/errors";
 import {
   emptyHistory,
   remember,
@@ -139,12 +140,25 @@ export function useBoard(
   useEffect(() => {
     mounted.current = true;
     let disposed = false,
+      expired = false,
       retry: ReturnType<typeof setTimeout> | undefined,
       dirty = false,
       generation = 0;
     let pendingRefresh: Promise<boolean> | null = null;
     let ownChannel: RealtimeChannel | null = null;
     const fail = (e: unknown) => {
+      if (disposed || expired) return;
+      if (e instanceof BoardExpiredError) {
+        expired = true;
+        clearTimeout(retry);
+        retry = undefined;
+        setError(e.message);
+        setFatal(true);
+        setStatus("Pizarra vencida");
+        setData(null);
+        void disconnect();
+        return;
+      }
       if (!disposed)
         setError(
           e instanceof Error ? e.message : "No pudimos sincronizar el tablero.",
@@ -152,7 +166,8 @@ export function useBoard(
     };
     const refresh = (): Promise<boolean> => {
       dirty = true;
-      if (disposed || !navigator.onLine) return Promise.resolve(false);
+      if (disposed || expired || !navigator.onLine)
+        return Promise.resolve(false);
       if (pendingRefresh) return pendingRefresh;
       pendingRefresh = (async () => {
         try {
@@ -161,17 +176,20 @@ export function useBoard(
             const requested = active.current;
             const result = await snapshot(id, requested);
             if (!result)
-              throw new Error("Enlace inválido o tablero inexistente.");
+              throw new BoardExpiredError(
+                "Esta pizarra venció por inactividad o ya no existe. Creá una nueva para seguir jugando.",
+              );
             if (requested !== active.current) {
               dirty = true;
               continue;
             }
-            if (!disposed) apply(result);
+            if (!disposed && !expired) apply(result);
           }
           return !disposed;
         } catch (e) {
           if (!disposed) {
             fail(e);
+            if (expired) return false;
             online.current = false;
             setStatus("Error de sincronización");
             schedule();
@@ -211,7 +229,7 @@ export function useBoard(
       if (old) await client().removeChannel(old);
     };
     const schedule = () => {
-      if (!disposed && !retry && navigator.onLine)
+      if (!disposed && !expired && !retry && navigator.onLine)
         retry = setTimeout(() => {
           retry = undefined;
           void connect().catch((e) => {
@@ -221,7 +239,7 @@ export function useBoard(
         }, 2500);
     };
     const connect = async () => {
-      if (disposed) return;
+      if (disposed || expired) return;
       if (!navigator.onLine) {
         setStatus("Sin conexión");
         return;
@@ -232,9 +250,13 @@ export function useBoard(
       setStatus(current.current ? "Reconectando" : "Conectando");
       try {
         uid.current = await session();
-        await enterBoard(id, token);
+        // BoardGate has already exchanged the invitation for membership.
+        // Reconnect by membership so deleting the original formation/link
+        // does not disconnect a participant viewing another formation.
+        await rpc<void>("touch_board", { p_board: id });
       } catch (e) {
         fail(e);
+        if (expired) return;
         if (!disposed && attempt === generation) {
           setFatal(!current.current);
           setStatus(current.current ? "Reconectando" : "Acceso no disponible");
@@ -300,7 +322,7 @@ export function useBoard(
         );
       });
       c.on("presence", { event: "sync" }, () => {
-        if (disposed || ownChannel !== c) return;
+        if (disposed || expired || ownChannel !== c) return;
         const participants = Object.values(
           c.presenceState<Participant>(),
         ).flat();
@@ -326,7 +348,7 @@ export function useBoard(
           void refresh();
       });
       c.subscribe(async (s) => {
-        if (disposed || ownChannel !== c) return;
+        if (disposed || expired || ownChannel !== c) return;
         if (s === "SUBSCRIBED") {
           try {
             const refreshed = await refresh();
@@ -334,7 +356,7 @@ export function useBoard(
               throw new Error(
                 "No pudimos cargar el estado guardado. Reintentando…",
               );
-            if (disposed || ownChannel !== c) return;
+            if (disposed || expired || ownChannel !== c) return;
             const color = [
               "#ffae68",
               "#8dbbff",
@@ -350,7 +372,7 @@ export function useBoard(
             });
             if (tracked !== "ok")
               throw new Error("No pudimos anunciar tu presencia.");
-            if (disposed || ownChannel !== c) return;
+            if (disposed || expired || ownChannel !== c) return;
             online.current = true;
             setStatus("Conectado");
             setError("");
@@ -376,6 +398,7 @@ export function useBoard(
       void disconnect();
     };
     const reconnect = () => {
+      if (expired || disposed) return;
       clearTimeout(retry);
       retry = undefined;
       void connect().catch((e) => {
@@ -383,8 +406,33 @@ export function useBoard(
         schedule();
       });
     };
+    let heartbeatPending = false;
+    const heartbeat = async () => {
+      if (disposed || expired || !online.current || heartbeatPending) return;
+      heartbeatPending = true;
+      try {
+        await rpc<void>("touch_board", { p_board: id });
+      } catch (e) {
+        fail(e);
+        if (!expired && !disposed) {
+          online.current = false;
+          setStatus("Reconectando");
+          schedule();
+        }
+      } finally {
+        heartbeatPending = false;
+      }
+    };
+    const heartbeatTimer = setInterval(() => void heartbeat(), 60_000);
     const focus = () => {
-      if (online.current) void refresh();
+      if (online.current)
+        void heartbeat().then(() => {
+          if (!expired) void refresh();
+        });
+      else if (!expired) reconnect();
+    };
+    const visibility = () => {
+      if (!document.hidden) focus();
     };
     const expiry = setInterval(() => {
       setNow(Date.now());
@@ -404,6 +452,7 @@ export function useBoard(
     window.addEventListener("offline", offline);
     window.addEventListener("online", reconnect);
     window.addEventListener("focus", focus);
+    document.addEventListener("visibilitychange", visibility);
     void connect().catch((e) => {
       fail(e);
       schedule();
@@ -414,9 +463,11 @@ export function useBoard(
       online.current = false;
       clearTimeout(retry);
       clearInterval(expiry);
+      clearInterval(heartbeatTimer);
       window.removeEventListener("offline", offline);
       window.removeEventListener("online", reconnect);
       window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", visibility);
       void disconnect();
     };
   }, [id, token, name, apply]);
@@ -575,10 +626,22 @@ export function useBoard(
     if (!online.current || !current.current)
       throw new Error("Esperá a recuperar la conexión.");
     const settings = current.current;
-    if (drag.current || current.current.players.length)
+    if (drag.current || pendingRef.current)
       throw new Error(
-        "Hay una formación pendiente. Vaciá la cancha antes de cambiar de formato.",
+        "Esperá a que se guarden los cambios antes de cambiar de formato.",
       );
+    if (
+      (["A", "B"] as const).some(
+        (team) =>
+          settings.players.filter(
+            (player) => player.team === team && player.placement === "field",
+          ).length > format,
+      )
+    )
+      throw new Error(
+        `Hay un equipo con más de ${format} titulares. Enviá jugadores al banco antes de cambiar a fútbol ${format}.`,
+      );
+    if (settings.board.players_per_team === format) return;
     try {
       apply(
         await run(() =>

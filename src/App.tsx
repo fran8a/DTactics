@@ -8,6 +8,21 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route
+        path="/p/:code"
+        element={
+          <Suspense
+            fallback={
+              <div className="status-page">
+                <div className="spinner" />
+                <p>Preparando la cancha…</p>
+              </div>
+            }
+          >
+            <BoardGate />
+          </Suspense>
+        }
+      />
+      <Route
         path="/board/:id"
         element={
           <Suspense

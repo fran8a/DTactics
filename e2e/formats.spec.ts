@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pendiente", async ({
+test("formatos: 7 y 11 por lado, numeración desde 1 y cupos de titulares", async ({
   page,
   browser,
 }) => {
@@ -17,15 +17,14 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
   await expect(page.locator(".connection")).toHaveText("Conectado", {
     timeout: 30000,
   });
-  const invite = page.url(),
-    parsed = new URL(invite),
-    id = parsed.pathname.split("/").pop()!,
-    token = parsed.searchParams.get("access")!;
+  const invite = page.url();
   const api = createClient(url!, key!, { auth: { persistSession: false } });
   expect((await api.auth.signInAnonymously()).error).toBeNull();
-  expect(
-    (await api.rpc("join_board", { p_board: id, p_token: token })).error,
-  ).toBeNull();
+  const link = await api.rpc("open_board_link", {
+    p_code: new URL(invite).pathname.split("/").pop(),
+  });
+  expect(link.error).toBeNull();
+  const id = link.data.board_id;
   const get = async () => {
     const r = await api.rpc("board_snapshot", { p_board: id });
     expect(r.error).toBeNull();
@@ -65,11 +64,11 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
     expect(race.filter((r) => !r.error)).toHaveLength(1);
     expect(race.find((r) => r.error)?.error?.message).toContain("7 jugadores");
     expect((await quick("B")).error).toBeNull();
-    await expect(page.locator(".player-row")).toHaveCount(14);
+    await expect(page.locator(".roster-player")).toHaveCount(14);
     for (const p of [page, mp]) {
       await expect(
         p.getByRole("button", { name: "Fútbol 11", exact: false }),
-      ).toBeDisabled();
+      ).toBeEnabled();
       for (const team of ["A", "B"])
         await expect(
           p
@@ -79,7 +78,7 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
             })
             .filter({ visible: true }),
         ).toBeDisabled();
-      await expect(p.getByText("Requiere pizarrón vacío.")).toBeVisible();
+      await expect(p.getByText("Requiere pizarrón vacío.")).toHaveCount(0);
     }
     let state = await get();
     for (const team of ["A", "B"])
@@ -91,10 +90,10 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
       ).toEqual([1, 2, 3, 4, 5, 6, 7]);
     const blocked = await api.rpc("change_format", {
       p_board: id,
-      p_format: 11,
+      p_format: 5,
       p_version: state.board.version,
     });
-    expect(blocked.error?.message).toContain("formación pendiente");
+    expect(blocked.error?.message).toContain("fútbol 7 o fútbol 11");
     const b = state.players.find((p: any) => p.team === "B");
     expect(
       (
@@ -107,6 +106,52 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
         })
       ).error?.message,
     ).toContain("7 jugadores");
+    await page.getByRole("button", { name: "Fútbol 11", exact: true }).click();
+    await expect(
+      mp.getByRole("button", { name: "Fútbol 11", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect((await quick("A")).error).toBeNull();
+    state = await get();
+    for (const p of [page, mp]) {
+      await expect(
+        p.getByRole("button", { name: "Fútbol 7", exact: true }),
+      ).toBeDisabled();
+    }
+    expect(
+      (
+        await api.rpc("change_format", {
+          p_board: id,
+          p_format: 7,
+          p_version: state.board.version,
+        })
+      ).error?.message,
+    ).toContain("más de 7 titulares");
+    const eighth = state.players.find(
+      (p: any) => p.team === "A" && p.number === 8,
+    );
+    expect(
+      (
+        await api.rpc("change_player", {
+          p_board: id,
+          p_action: "placement",
+          p_id: eighth.id,
+          p_data: { placement: "bench" },
+          p_version: eighth.version,
+        })
+      ).error,
+    ).toBeNull();
+    await expect(
+      page.getByRole("button", { name: "Fútbol 7", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Fútbol 7", exact: true }).click();
+    await expect(
+      mp.getByRole("button", { name: "Fútbol 7", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    state = await get();
+    expect(state.players).toHaveLength(15);
+    expect(state.players.find((p: any) => p.id === eighth.id).placement).toBe(
+      "bench",
+    );
     await page.screenshot({
       path: "test-results/format-7-desktop.png",
       fullPage: true,
@@ -126,7 +171,7 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
           })
         ).error,
       ).toBeNull();
-    await expect(page.locator(".player-row")).toHaveCount(0);
+    await expect(page.locator(".roster-player")).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Fútbol 11", exact: false }),
     ).toBeEnabled();
@@ -147,13 +192,13 @@ test("formatos: 7 y 11 por lado, numeración desde 1 y bloqueo con formación pe
       ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     for (const team of ["A", "B"] as const)
       expect((await quick(team)).error?.message).toContain("11 jugadores");
-    await expect(page.locator(".player-row")).toHaveCount(22);
-    await expect(mp.locator(".player-row")).toHaveCount(22);
+    await expect(page.locator(".roster-player")).toHaveCount(22);
+    await expect(mp.locator(".roster-player")).toHaveCount(22);
     await page.reload();
     await expect(
       page.getByRole("button", { name: "Fútbol 11", exact: false }),
     ).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".player-row")).toHaveCount(22);
+    await expect(page.locator(".roster-player")).toHaveCount(22);
     await page.screenshot({
       path: "test-results/format-11-desktop.png",
       fullPage: true,

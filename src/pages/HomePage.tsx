@@ -14,7 +14,7 @@ export default function Home() {
     setError("");
     try {
       const b = await createBoard();
-      navigate(`/board/${b.id}?access=${b.token}`);
+      navigate(`/p/${b.code}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {

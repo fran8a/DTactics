@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Snapshot } from "./model";
-import { errorMessage } from "./errors";
+import { BoardExpiredError, errorMessage } from "./errors";
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const configured = Boolean(url && key);
@@ -32,15 +32,32 @@ export async function rpc<T>(
   args: Record<string, unknown> = {},
 ): Promise<T> {
   const { data, error } = await client().rpc(name, args);
-  if (error) throw new Error(errorMessage(error));
+  if (error) {
+    if (error.code === "PT410")
+      throw new BoardExpiredError(errorMessage(error));
+    throw new Error(errorMessage(error));
+  }
   return data as T;
 }
 export async function createBoard() {
   await session();
-  return rpc<{ id: string; token: string }>("create_board");
+  return rpc<{ code: string }>("create_shared_board");
 }
+export type ResolvedBoardLink = { board_id: string; formation_id: string };
+export async function openBoardLink(code: string) {
+  await session();
+  return rpc<ResolvedBoardLink>("open_board_link", { p_code: code });
+}
+export const getBoardLink = (id: string, formation: string) =>
+  rpc<string>("get_board_link", { p_board: id, p_formation: formation });
 export async function enterBoard(id: string, token: string) {
   await session();
+  if (/^[A-Za-z0-9_-]{32}$/.test(token)) {
+    const link = await openBoardLink(token);
+    if (link.board_id !== id)
+      throw new Error("El enlace no corresponde a esta pizarra.");
+    return link;
+  }
   return rpc("join_board", { p_board: id, p_token: token });
 }
 export const snapshot = (id: string, formation: string | null = null) =>

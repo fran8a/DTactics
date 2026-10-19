@@ -1,32 +1,64 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { AlertCircle } from "lucide-react";
-import { enterBoard } from "../lib/api";
+import { enterBoard, openBoardLink } from "../lib/api";
 import { Logo, Nickname } from "../components/Identity";
 import BoardPage from "./BoardPage";
 export default function BoardGate() {
-  const { id = "" } = useParams(),
+  const { id = "", code = "" } = useParams(),
     [params] = useSearchParams(),
     token = params.get("access") ?? "";
+  const formation = params.get("formation");
+  const location = useLocation();
   const [name, setName] = useState(
       localStorage.getItem("bizarron.nickname") ?? "",
     ),
-    [valid, setValid] = useState(false),
+    [resolved, setResolved] = useState<{
+      id: string;
+      token: string;
+      formation: string | null;
+    } | null>(null),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
-    setValid(false);
+    // Local formation switches have already been authorized. Updating their
+    // URL must not tear down the active collaboration connection/history.
+    if (
+      code &&
+      resolved &&
+      location.state?.shortBoard === resolved.id &&
+      location.state?.shortCode === code
+    )
+      return;
+    setResolved(null);
     setError("");
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f]{64}$/i.test(token)) {
+    if (
+      code
+        ? !/^[A-Za-z0-9_-]{32}$/.test(code)
+        : !/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f]{64}$/i.test(token)
+    ) {
       setError(
         "Enlace inválido. Pedí el enlace completo con su token de acceso.",
       );
       return;
     }
-    void enterBoard(id, token)
-      .then(() => {
-        if (active) setValid(true);
+    const authorize = async () => {
+      if (code) {
+        const link = await openBoardLink(code);
+        return { id: link.board_id, token: code, formation: link.formation_id };
+      }
+      await enterBoard(id, token);
+      return { id, token, formation };
+    };
+    void authorize()
+      .then((link) => {
+        if (active) setResolved(link);
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -34,7 +66,7 @@ export default function BoardGate() {
     return () => {
       active = false;
     };
-  }, [id, token, attempt]);
+  }, [id, token, code, formation, attempt, location.state]);
   if (error)
     return (
       <div className="status-page">
@@ -45,10 +77,10 @@ export default function BoardGate() {
         <button className="secondary" onClick={() => setAttempt((a) => a + 1)}>
           Reintentar
         </button>
-        <Link to="/">Volver al inicio</Link>
+        <Link to="/">Ir al inicio para crear otra pizarra</Link>
       </div>
     );
-  if (!valid)
+  if (!resolved)
     return (
       <div className="status-page">
         <Logo />
@@ -57,5 +89,13 @@ export default function BoardGate() {
       </div>
     );
   if (!name) return <Nickname onDone={setName} />;
-  return <BoardPage key={id} id={id} token={token} name={name} />;
+  return (
+    <BoardPage
+      key={resolved.id}
+      id={resolved.id}
+      token={resolved.token}
+      initialFormation={resolved.formation}
+      name={name}
+    />
+  );
 }

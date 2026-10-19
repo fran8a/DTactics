@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Move,
   Copy,
@@ -9,27 +9,34 @@ import {
   X,
   Pencil,
   Shirt,
+  Smartphone,
+  RotateCw,
+  Trash2,
 } from "lucide-react";
 import { useBoard } from "../features/useBoard";
 import { fieldDrop, freePosition, type Player } from "../lib/model";
 import PlayerPalette from "../components/PlayerPalette";
 import PlayerForm from "../components/PlayerForm";
+import ClearPlayersDialog from "../components/ClearPlayersDialog";
 import { Logo } from "../components/Identity";
 import FormationTabs from "../components/FormationTabs";
 import { historyShortcut } from "../lib/history";
+import { getBoardLink } from "../lib/api";
 import "./BoardPage.css";
 const FootballField = lazy(() => import("../components/FootballField"));
 export default function BoardPage({
   id,
   token,
   name,
+  initialFormation,
 }: {
   id: string;
   token: string;
   name: string;
+  initialFormation: string | null;
 }) {
-  const [params, setParams] = useSearchParams();
-  const requested = params.get("formation");
+  const navigate = useNavigate();
+  const requested = initialFormation;
   const board = useBoard(
       id,
       token,
@@ -43,19 +50,46 @@ export default function BoardPage({
     [title, setTitle] = useState(""),
     [saving, setSaving] = useState(false);
   const [palettePending, setPalettePending] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [horizontal, setHorizontal] = useState(() => {
+    try {
+      return localStorage.getItem("bizarron.pitch-horizontal.v1") === "true";
+    } catch {
+      return false;
+    }
+  });
   const fieldRef = useRef<HTMLDivElement>(null);
+  const links = useRef(new Map<string, Promise<string>>());
+  function formationLink(formation: string) {
+    const cached = links.current.get(formation);
+    if (cached) return cached;
+    const result =
+      /^[A-Za-z0-9_-]{32}$/.test(token) && formation === initialFormation
+        ? Promise.resolve(token)
+        : getBoardLink(id, formation);
+    links.current.set(formation, result);
+    void result.catch(() => links.current.delete(formation));
+    return result;
+  }
   useEffect(() => {
+    let active = true;
     if (board.selection)
-      setParams(
-        (previous) => {
-          const next = new URLSearchParams(previous);
-          next.set("formation", board.selection!);
-          return next;
-        },
-        { replace: true },
-      );
+      void formationLink(board.selection)
+        .then((code) => {
+          if (active)
+            navigate(`/p/${code}`, {
+              replace: true,
+              state: { shortBoard: id, shortCode: code },
+            });
+        })
+        .catch((e: Error) => {
+          if (active) setLocalError(e.message);
+        });
     setEditor(null);
-  }, [board.selection, setParams]);
+    return () => {
+      active = false;
+    };
+  }, [board.selection, navigate, id, token, initialFormation]);
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
       const target = event.target;
@@ -114,7 +148,13 @@ export default function BoardPage({
   function getPosition(x: number, y: number) {
     const canvas = fieldRef.current?.querySelector("canvas");
     if (!canvas || !board.data) return null;
-    return fieldDrop(x, y, canvas.getBoundingClientRect(), false);
+    return fieldDrop(
+      x,
+      y,
+      canvas.getBoundingClientRect(),
+      horizontal,
+      horizontal ? 2 : 3,
+    );
   }
   async function quickAdd(addition: {
     team: "A" | "B";
@@ -157,7 +197,11 @@ export default function BoardPage({
   );
   async function copy() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      if (!board.selection) return;
+      const code = await formationLink(board.selection);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/p/${code}`,
+      );
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -179,7 +223,7 @@ export default function BoardPage({
     }
   }
   const data = board.data;
-  if (!data)
+  if (!data || board.fatal)
     return (
       <div className="status-page">
         <Logo />
@@ -204,14 +248,22 @@ export default function BoardPage({
     !!editor ||
     palettePending ||
     board.busy ||
-    data.players.length > 0;
+    confirmClear;
+  const exceedsFormat = (format: 7 | 11) =>
+    (["A", "B"] as const).some(
+      (team) =>
+        data.players.filter(
+          (player) => player.team === team && player.placement === "field",
+        ).length > format,
+    );
   const controlsDisabled =
     !board.connected ||
     board.busy ||
     saving ||
     palettePending ||
     !!editor ||
-    renaming;
+    renaming ||
+    confirmClear;
   return (
     <div className="board-app">
       <header className="board-header">
@@ -318,6 +370,22 @@ export default function BoardPage({
             <div className="match-format">
               <div className="format-toggle-row">
                 <span className="format-label">Fútbol</span>
+                <button
+                  type="button"
+                  className="clear-players-button"
+                  aria-label="Eliminar todos los jugadores"
+                  title="Eliminar todos los jugadores"
+                  disabled={
+                    controlsDisabled ||
+                    data.players.length === 0 ||
+                    data.locks.some(
+                      (lock) => Date.parse(lock.expires_at) > board.now,
+                    )
+                  }
+                  onClick={() => setConfirmClear(true)}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>
                 <div
                   className="format-options"
                   role="group"
@@ -332,11 +400,11 @@ export default function BoardPage({
                       aria-label={`Fútbol ${format}`}
                       aria-pressed={data.board.players_per_team === format}
                       title={
-                        data.players.length
-                          ? "Vaciá el pizarrón para cambiar el formato"
+                        exceedsFormat(format)
+                          ? `Hay un equipo con más de ${format} titulares. Enviá jugadores al banco.`
                           : `${format} vs ${format}`
                       }
-                      disabled={formatBlocked}
+                      disabled={formatBlocked || exceedsFormat(format)}
                       onClick={async () => {
                         setSaving(true);
                         setLocalError("");
@@ -354,12 +422,8 @@ export default function BoardPage({
                   ))}
                 </div>
               </div>
-              {formatBlocked && (
-                <p className="format-hint">
-                  {data.players.length
-                    ? "Requiere pizarrón vacío."
-                    : "Hay cambios pendientes."}
-                </p>
+              {formatBlocked && !data.players.length && (
+                <p className="format-hint">Hay cambios pendientes.</p>
               )}
             </div>
           </section>
@@ -386,34 +450,34 @@ export default function BoardPage({
                     /{data.board.players_per_team}
                   </span>
                 </div>
-                <select
-                  aria-label={`Editar jugador del equipo ${team}`}
-                  value=""
-                  disabled={
-                    !board.connected ||
-                    !data.players.some((p) => p.team === team)
-                  }
-                  onChange={(event) => {
-                    const player = data.players.find(
-                      (p) => p.id === event.target.value,
-                    );
-                    if (player) setEditor(player);
-                  }}
+                <ul
+                  className="team-players"
+                  aria-label={`Jugadores del equipo ${team}`}
                 >
-                  <option value="">
-                    {data.players.some((p) => p.team === team)
-                      ? "Editar jugador..."
-                      : "Sin jugadores"}
-                  </option>
                   {data.players
                     .filter((p) => p.team === team)
                     .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.number}. {p.name}
-                        {p.placement === "bench" ? " (fuera)" : ""}
-                      </option>
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          className={`roster-player team-${team}`}
+                          aria-label={`Editar ${p.name}, número ${p.number}, equipo ${team}`}
+                          disabled={!board.connected}
+                          onClick={() => setEditor(p)}
+                        >
+                          <span className="roster-number">{p.number}</span>
+                          <span className="roster-player-name">
+                            {p.name}
+                            {p.placement === "bench" ? " (fuera)" : ""}
+                          </span>
+                          <Pencil size={12} aria-hidden="true" />
+                        </button>
+                      </li>
                     ))}
-                </select>
+                </ul>
+                {!data.players.some((p) => p.team === team) && (
+                  <p className="roster-empty">Sin jugadores</p>
+                )}
               </div>
             ))}
           </section>
@@ -439,22 +503,65 @@ export default function BoardPage({
                 <ChevronLeft size={15} /> VOLVER AL POTRERO
               </Link>
             </div>
-            <span className="pitch-format-badge">
-              {data.board.players_per_team} vs {data.board.players_per_team}
-            </span>
+            <div className="pitch-view-controls">
+              <button
+                type="button"
+                className="orientation-switch"
+                role="switch"
+                aria-label="Cancha horizontal"
+                aria-checked={horizontal}
+                disabled={
+                  palettePending ||
+                  data.locks.some(
+                    (lock) => Date.parse(lock.expires_at) > board.now,
+                  )
+                }
+                title={
+                  horizontal
+                    ? "Girar cancha a vertical"
+                    : "Girar cancha a horizontal"
+                }
+                onClick={() => {
+                  const next = !horizontal;
+                  setHorizontal(next);
+                  try {
+                    localStorage.setItem(
+                      "bizarron.pitch-horizontal.v1",
+                      String(next),
+                    );
+                  } catch {
+                    /* The view remains usable when storage is unavailable. */
+                  }
+                }}
+              >
+                <span className="orientation-icon" aria-hidden="true">
+                  <span className="orientation-device">
+                    <Smartphone size={18} />
+                  </span>
+                  <RotateCw className="orientation-arrow" size={12} />
+                </span>
+              </button>
+              <span className="pitch-format-badge">
+                {data.board.players_per_team} vs {data.board.players_per_team}
+              </span>
+            </div>
           </div>
           <div className="pitch-workspace">
-            <div ref={fieldRef} className="pitch-container vertical">
+            <div
+              ref={fieldRef}
+              className={`pitch-container ${horizontal ? "horizontal" : "vertical"}`}
+            >
               <Suspense
                 fallback={<p className="status-page">Dibujando la cancha…</p>}
               >
                 <FootballField
                   players={players}
                   playersPerTeam={data.board.players_per_team}
+                  horizontal={horizontal}
                   locks={data.locks}
                   people={board.people}
                   now={board.now}
-                  enabled={board.connected}
+                  enabled={board.connected && !confirmClear}
                   onSelect={setEditor}
                   begin={board.begin}
                   moving={board.moving}
@@ -478,6 +585,21 @@ export default function BoardPage({
           </div>
         </main>
       </div>
+      {confirmClear && (
+        <ClearPlayersDialog
+          onClose={() => setConfirmClear(false)}
+          onConfirm={async () => {
+            setSaving(true);
+            try {
+              for (const player of data.players) {
+                await board.change("delete", player.id, {}, player.version);
+              }
+            } finally {
+              setSaving(false);
+            }
+          }}
+        />
+      )}
       {editor && (
         <PlayerForm
           key={editor.id}

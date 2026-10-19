@@ -40,7 +40,7 @@ test("maqueta 3D: frente, reverso, vueltas, orientación conservada y movimiento
   ).toBe(true);
   expect(await scene.locator(".pitch-back").innerText()).toBe("");
   await expect(scene.locator(".pitch-back .pitch-boundary")).toHaveCount(1);
-  await expect(scene.locator(".pitch-edge")).toHaveCount(4);
+  await expect(scene.locator(".pitch-edge")).toHaveCount(13);
   await page.screenshot({
     path: "test-results/landing-3d-back.png",
     fullPage: true,

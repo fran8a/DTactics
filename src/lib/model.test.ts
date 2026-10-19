@@ -7,9 +7,63 @@ import {
   fromScreen,
   toScreen,
   validPlayer,
+  constrainPlayerPosition,
+  lateralBenchPosition,
   type Snapshot,
 } from "./model";
 describe("coordenadas y validación", () => {
+  it("limita el arrastre a los laterales visibles en ambas orientaciones", () => {
+    for (const horizontal of [false, true]) {
+      const g = pitchGeometry(800, horizontal, horizontal ? 2 : 3);
+      for (const y of [-1000, g.top, g.height + 1000]) {
+        for (const x of [0, g.left + g.width / 2, 800]) {
+          const p = constrainPlayerPosition({ x, y }, 800, horizontal);
+          if (horizontal) {
+            expect(p.x).toBeGreaterThanOrEqual(g.left + 19);
+            expect(p.x).toBeLessThanOrEqual(g.left + g.width - 19);
+          } else {
+            expect(p.y).toBeGreaterThanOrEqual(g.top + 19);
+            expect(p.y).toBeLessThanOrEqual(g.top + g.heightInside - 19);
+          }
+          expect(p.x).toBeGreaterThanOrEqual(19);
+          expect(p.x).toBeLessThanOrEqual(781);
+        }
+      }
+      if (horizontal) {
+        expect(
+          constrainPlayerPosition({ x: 400, y: 0 }, 800, true).y,
+        ).toBeLessThan(g.top);
+        expect(
+          constrainPlayerPosition({ x: 400, y: g.height }, 800, true).y,
+        ).toBeGreaterThan(g.top + g.heightInside);
+      } else {
+        expect(
+          constrainPlayerPosition({ x: 0, y: g.top }, 800, false).x,
+        ).toBeLessThan(g.left);
+        expect(
+          constrainPlayerPosition({ x: 800, y: g.top }, 800, false).x,
+        ).toBeGreaterThan(g.left + g.width);
+      }
+    }
+  });
+  it("ubica suplentes en los laterales de la cancha, también al rotarla", () => {
+    for (const horizontal of [false, true]) {
+      for (const position of [
+        { x: -0.2, y: 0.5 },
+        { x: 1.2, y: 0.5 },
+        { x: 0.5, y: -0.2 },
+        { x: 0.5, y: 1.2 },
+      ]) {
+        const canonical = lateralBenchPosition(position, "A", 0, 620);
+        const projected = toScreen(canonical.x, canonical.y, horizontal);
+        const cross = horizontal ? projected.y : projected.x;
+        const along = horizontal ? projected.x : projected.y;
+        expect(cross < 0 || cross > 1).toBe(true);
+        expect(along).toBeGreaterThanOrEqual(0);
+        expect(along).toBeLessThanOrEqual(1);
+      }
+    }
+  });
   it("ubica altas al soltar sobre el canvas y descarta las que quedan afuera", () => {
     for (const horizontal of [false, true]) {
       const pitch = pitchGeometry(340, horizontal);

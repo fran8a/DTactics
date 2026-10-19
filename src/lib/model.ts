@@ -80,8 +80,9 @@ export function fieldDrop(
   clientY: number,
   rect: { left: number; top: number; width: number; height: number },
   horizontal: boolean,
+  marginMultiplier = 1,
 ) {
-  const pitch = pitchGeometry(rect.width, horizontal);
+  const pitch = pitchGeometry(rect.width, horizontal, marginMultiplier);
   if (
     rect.width <= 44 ||
     rect.height <= 44 ||
@@ -97,9 +98,16 @@ export function fieldDrop(
     horizontal,
   );
 }
-export function pitchGeometry(width: number, horizontal: boolean) {
-  const apron = 24;
-  const scale = Math.max(1, width - apron * 2) / (horizontal ? 1050 : 680);
+export function pitchGeometry(
+  width: number,
+  horizontal: boolean,
+  marginMultiplier = 1,
+) {
+  const base = horizontal ? 1050 : 680;
+  const scale =
+    Math.max(1, width - 48 * marginMultiplier) /
+    (base + 60 * (marginMultiplier - 1));
+  const apron = 24 * marginMultiplier + 30 * scale * (marginMultiplier - 1);
   const height = (horizontal ? 680 : 1050) * scale + apron * 2;
   return {
     apron,
@@ -113,6 +121,58 @@ export function pitchGeometry(width: number, horizontal: boolean) {
 }
 export function outsideField(point: { x: number; y: number }) {
   return point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1;
+}
+/** Sidelines rotate with the pitch; goal-line exits are always blocked. */
+export function constrainPlayerPosition(
+  position: { x: number; y: number },
+  width: number,
+  horizontal: boolean,
+) {
+  const g = pitchGeometry(width, horizontal, horizontal ? 2 : 3);
+  const insetX = Math.min(19, g.width / 2);
+  const insetY = Math.min(19, g.heightInside / 2);
+  const canvasInsetX = Math.min(19, width / 2);
+  const canvasInsetY = Math.min(19, g.height / 2);
+  return {
+    x: Math.max(
+      horizontal ? g.left + insetX : canvasInsetX,
+      Math.min(
+        horizontal ? g.left + g.width - insetX : width - canvasInsetX,
+        position.x,
+      ),
+    ),
+    y: Math.max(
+      horizontal ? canvasInsetY : g.top + insetY,
+      Math.min(
+        horizontal ? g.height - canvasInsetY : g.top + g.heightInside - insetY,
+        position.y,
+      ),
+    ),
+  };
+}
+/** Canonical sideline positions, projected into the current view by toScreen. */
+export function lateralBenchPosition(
+  position: { x: number; y: number } | null,
+  team: "A" | "B",
+  index: number,
+  fieldWidth: number,
+) {
+  const fallback = {
+    x: team === "A" ? -32 / fieldWidth : 1 + 32 / fieldWidth,
+    y: 0.08 + (index % 10) * 0.09,
+  };
+  if (!position) return fallback;
+  return {
+    x:
+      position.x < 0 || position.x > 1
+        ? position.x
+        : position.x < 0.5
+          ? -32 / fieldWidth
+          : position.x > 0.5
+            ? 1 + 32 / fieldWidth
+            : fallback.x,
+    y: clamp(position.y),
+  };
 }
 export function toScreen(x: number, y: number, horizontal: boolean) {
   return horizontal ? { x: y, y: 1 - x } : { x, y };

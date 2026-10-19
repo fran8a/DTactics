@@ -22,8 +22,7 @@ export default function PlayerForm({
     [number, setNumber] = useState(String(player?.number ?? 9)),
     [team, setTeam] = useState<"A" | "B">(player?.team ?? "A");
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [confirm, setConfirm] = useState(false);
+    [error, setError] = useState("");
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -144,32 +143,14 @@ export default function PlayerForm({
                   : "Enviar al banco"}
               </button>
             )}
-            {confirm ? (
-              <>
-                <p>¿Eliminar a {player.name} de la cancha?</p>
-                <button
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => void run(onDelete)}
-                >
-                  Sí, eliminar jugador
-                </button>
-                <button
-                  className="text-button"
-                  onClick={() => setConfirm(false)}
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={() => setConfirm(true)}
-              >
-                <Trash2 size={16} /> Eliminar jugador
-              </button>
-            )}
+            <button
+              type="button"
+              className="danger"
+              disabled={busy}
+              onClick={() => void run(onDelete)}
+            >
+              <Trash2 size={16} /> Eliminar jugador
+            </button>
           </div>
         )}
       </section>

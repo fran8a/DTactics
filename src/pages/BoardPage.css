@@ -188,9 +188,36 @@
   width: 100%;
 }
 .board-app .format-label {
+  margin-right: auto;
   font-size: 12px;
   font-weight: 600;
   color: #496746;
+}
+.board-app .clear-players-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  min-height: 30px;
+  padding: 5px;
+  border: 1px solid #e5cfc7;
+  border-radius: 6px;
+  background: #f9eee8;
+  color: #a64430;
+}
+.board-app .clear-players-button:hover {
+  background: #f2dcd2;
+}
+.board-app .clear-players-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+.board-app .clear-players-dialog p {
+  font-size: 13px;
+  line-height: 1.5;
 }
 .board-app .sidebar .format-options {
   position: relative;
@@ -222,6 +249,11 @@
   color: #8a947e;
 }
 .board-app .sidebar .roster {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  align-items: start;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 10px;
@@ -264,7 +296,60 @@
   font-size: 9px;
   margin-bottom: 5px;
 }
-.board-app .team-list select {
+.board-app .team-players {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.board-app .roster-player {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px;
+  text-align: left;
+  color: #224d36;
+  background: #eef0e6;
+  border: 1px solid #dce3d3;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.board-app .roster-player:hover {
+  background: #e2e9d9;
+}
+.board-app .roster-player:focus-visible {
+  outline: 2px solid #224d36;
+  outline-offset: -2px;
+}
+.board-app .roster-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #ff9048;
+  color: #40210c;
+  font-weight: 700;
+}
+.board-app .roster-player.team-B .roster-number {
+  background: #569cfa;
+  color: #102f57;
+}
+.board-app .roster-player-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.board-app .roster-player > svg {
+  flex-shrink: 0;
+  color: #7b8972;
+}
+.board-app .roster-empty {
+  margin: 0;
+  color: #7b8972;
   font-size: 11px;
 }
 .board-app .sidebar .presence {
@@ -291,6 +376,7 @@
   gap: 0;
 }
 .board-app .pitch-heading {
+  pointer-events: none;
   position: absolute;
   top: 6px;
   left: 20px;
@@ -298,6 +384,10 @@
   z-index: 1;
   margin: 0;
   min-width: 0;
+}
+.board-app .pitch-heading a,
+.board-app .pitch-heading button {
+  pointer-events: auto;
 }
 .board-app .pitch-heading > div {
   display: flex;
@@ -331,17 +421,82 @@
   min-width: 0;
   height: 100%;
 }
-.board-app .pitch-container.vertical {
+.board-app .pitch-container {
   width: 100%;
   max-width: none;
   height: 100%;
   margin: 0;
 }
+.board-app .pitch-view-controls {
+  gap: 8px;
+}
+.board-app .orientation-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 5px 9px;
+  border: 1px solid #d6dfcc;
+  border-radius: 20px;
+  background: #fafaf3;
+  color: #496746;
+  font-size: 10px;
+}
+.board-app .orientation-switch:hover {
+  background: #e8eedf;
+}
+.board-app .orientation-switch:focus-visible {
+  outline: 2px solid #224d36;
+  outline-offset: 3px;
+}
+.board-app .orientation-icon {
+  position: relative;
+  display: inline-flex;
+  padding-right: 6px;
+}
+.board-app .orientation-device {
+  display: inline-flex;
+  transition: transform 280ms ease;
+}
+.board-app .orientation-arrow {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  transition: transform 280ms ease;
+}
+.board-app .orientation-switch:hover .orientation-arrow {
+  transform: rotate(45deg);
+}
+.board-app .orientation-switch[aria-checked="true"] .orientation-device {
+  transform: rotate(-90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-app .orientation-switch * {
+    transition: none;
+  }
+}
 .board-app .field-wrap {
   height: 100%;
+  display: block;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+.board-app .field-scroll-surface {
+  min-width: 100%;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.board-app .field-wrap[data-horizontal="true"] {
+  overflow: hidden;
+  touch-action: none;
+}
+.board-app .field-scroll-surface > div {
+  flex-shrink: 0;
+  touch-action: none;
 }
 .board-app .empty-pitch {
   inset: 40% 8% auto;
@@ -351,6 +506,7 @@
   font-size: 18px;
 }
 .board-app .pitch-caption {
+  pointer-events: none;
   position: absolute;
   bottom: 4px;
   left: 20px;

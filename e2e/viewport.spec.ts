@@ -105,10 +105,17 @@ test("cancha completa y herramientas accesibles sin desplazar la página", async
   await page.mouse.down();
   await page.mouse.move(target.x, target.y, { steps: 16 });
   await page.mouse.up();
-  await expect(page.getByLabel("Editar jugador del equipo A")).toBeEnabled();
+  await expect(
+    page
+      .getByRole("list", { name: "Jugadores del equipo A" })
+      .getByRole("button")
+      .first(),
+  ).toBeEnabled();
   await page
-    .getByLabel("Editar jugador del equipo A")
-    .selectOption({ index: 1 });
+    .getByRole("list", { name: "Jugadores del equipo A" })
+    .getByRole("button")
+    .first()
+    .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page
     .getByLabel("Nombre del jugador", { exact: true })
@@ -116,12 +123,17 @@ test("cancha completa y herramientas accesibles sin desplazar la página", async
   await page
     .getByRole("button", { name: "Guardar cambios", exact: true })
     .click();
-  await expect(page.getByLabel("Editar jugador del equipo A")).toContainText(
-    "Jugador adaptable",
-  );
+  await expect(
+    page
+      .getByRole("list", { name: "Jugadores del equipo A" })
+      .getByRole("button")
+      .first(),
+  ).toContainText("Jugador adaptable");
   await page
-    .getByLabel("Editar jugador del equipo A")
-    .selectOption({ index: 1 });
+    .getByRole("list", { name: "Jugadores del equipo A" })
+    .getByRole("button")
+    .first()
+    .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   for (const [width, height] of [
     [320, 568],

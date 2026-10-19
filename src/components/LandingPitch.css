@@ -27,7 +27,7 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   background: #183b2c;
-  border-radius: 12px;
+  border-radius: 14px;
 }
 .pitch-face::after {
   content: "";
@@ -56,37 +56,15 @@
   height: auto;
   flex: 1;
 }
+/* Rounded cross-sections keep the thickness inside the face silhouette,
+   including the corners, without rectangular side panels sticking out. */
 .pitch-edge {
   position: absolute;
-  border-radius: 0;
-}
-.pitch-edge-left,
-.pitch-edge-right {
-  top: 0;
-  height: 100%;
-  width: 12px;
-}
-.pitch-edge-left {
-  left: 0;
-  transform: translateX(-50%) rotateY(-90deg);
-}
-.pitch-edge-right {
-  left: 100%;
-  transform: translateX(-50%) rotateY(90deg);
-}
-.pitch-edge-top,
-.pitch-edge-bottom {
-  left: 0;
-  width: 100%;
-  height: 12px;
-}
-.pitch-edge-top {
-  top: 0;
-  transform: translateY(-50%) rotateX(90deg);
-}
-.pitch-edge-bottom {
-  top: 100%;
-  transform: translateY(-50%) rotateX(-90deg);
+  inset: 0;
+  border-radius: 14px;
+  background: #183b2c;
+  box-shadow: 0 0 0 0.35px #183b2c;
+  pointer-events: none;
 }
 @supports not (transform-style: preserve-3d) {
   .hero-art.pitch-scene {

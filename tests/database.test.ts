@@ -43,7 +43,11 @@ const change = (
     lease,
   ]);
 async function extended() {
-  const created = await user(a, () => call<any>("create_board"));
+  // Independent creators keep fixtures below the real five-board quota.
+  const creator = randomUUID();
+  await db.query("insert into auth.users values ($1)", [creator]);
+  const created = await user(creator, () => call<any>("create_board"));
+  await user(a, () => call("join_board", [created.id, created.token]));
   await user(b, () => call("join_board", [created.id, created.token]));
   const s = await user(a, () => call<any>("board_snapshot", [created.id]));
   return { board: created.id, formation: s.formation.id };
@@ -116,6 +120,13 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
     for (const migration of readdirSync("supabase/migrations")
       .filter((n) => n.endsWith(".sql"))
       .sort()) {
+      // Cron is an external Postgres scheduler; its installed job is checked
+      // against Supabase. Cleanup itself runs in the tests below.
+      if (migration.endsWith("_schedule_board_cleanup.sql")) {
+        const sql = readFileSync(`supabase/migrations/${migration}`, "utf8");
+        await db.exec(sql.split("create extension if not exists pg_cron;")[0]);
+        continue;
+      }
       if (migration.endsWith("_formations_bench_history.sql")) {
         const created = await user(a, () => call<any>("create_board"));
         const p = randomUUID();
@@ -142,6 +153,177 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
   }, 30000);
   afterAll(async () => {
     await db.close();
+  });
+  it("reutiliza enlaces opacos por formación y autoriza al resolverlos sin exponer el token anterior", async () => {
+    const c = await extended();
+    const code = await user(a, () =>
+      call<string>("get_board_link", [c.board, c.formation]),
+    );
+    expect(code).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    expect(
+      await user(b, () => call("get_board_link", [c.board, c.formation])),
+    ).toBe(code);
+    const stored = await db.query<{ n: number; hashed: boolean }>(
+      "select count(*)::int n,bool_and(code_hash=extensions.digest($1,'sha256')) hashed from private.board_links where formation_id=$2",
+      [code, c.formation],
+    );
+    expect(stored.rows[0]).toEqual({ n: 1, hashed: true });
+    await expect(
+      user(intruder, () => call("get_board_link", [c.board, c.formation])),
+    ).rejects.toThrow(/acceso/);
+    await expect(
+      user(intruder, () => call("open_board_link", ["!".repeat(32)])),
+    ).rejects.toThrow(/inválido/);
+    await expect(
+      user(intruder, () => call("open_board_link", ["a".repeat(32)])),
+    ).rejects.toThrow(/venció/);
+    expect(await user(intruder, () => call("open_board_link", [code]))).toEqual(
+      { board_id: c.board, formation_id: c.formation },
+    );
+    expect(
+      await user(intruder, () =>
+        call("get_board_link", [c.board, c.formation]),
+      ),
+    ).toBe(code);
+    await expect(
+      user(a, () => db.query("select * from private.board_links")),
+    ).rejects.toThrow(/permission denied/);
+    const second = randomUUID();
+    await db.query(
+      "insert into public.formations(id,board_id,name,orientation,players_per_team) values($1,$2,'Segunda','vertical',11)",
+      [second, c.board],
+    );
+    const secondCode = await user(a, () =>
+      call<string>("get_board_link", [c.board, second]),
+    );
+    expect(secondCode).not.toBe(code);
+    expect(await user(b, () => call("open_board_link", [secondCode]))).toEqual({
+      board_id: c.board,
+      formation_id: second,
+    });
+    await db.query("delete from public.formations where id=$1", [second]);
+    await expect(
+      user(b, () => call("open_board_link", [secondCode])),
+    ).rejects.toThrow(/venció/);
+    expect(
+      (
+        await db.query(
+          "select * from private.board_links where formation_id=$1",
+          [second],
+        )
+      ).rows,
+    ).toHaveLength(0);
+    await db.query(
+      "update private.board_liveness set last_seen_at=clock_timestamp()-interval '11 minutes' where board_id=$1",
+      [c.board],
+    );
+    await expect(
+      user(b, () => call("open_board_link", [code])),
+    ).rejects.toThrow(/venció/);
+    await db.query("select private.cleanup_expired_boards(100)");
+    expect(
+      (
+        await db.query("select * from private.board_links where board_id=$1", [
+          c.board,
+        ])
+      ).rows,
+    ).toHaveLength(0);
+  });
+  it("crea una pizarra con enlace corto sin devolver IDs ni el token heredado", async () => {
+    const creator = randomUUID();
+    await db.query("insert into auth.users values($1)", [creator]);
+    const created = await user(creator, () =>
+      call<{ code: string }>("create_shared_board"),
+    );
+    expect(Object.keys(created)).toEqual(["code"]);
+    expect(created.code).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    const resolved = await user(creator, () =>
+      call<any>("open_board_link", [created.code]),
+    );
+    expect(resolved.board_id).toBeTruthy();
+    expect(resolved.formation_id).toBeTruthy();
+  });
+  it("limita cada usuario a cinco pizarras vigentes y libera cupo al vencer", async () => {
+    const creator = randomUUID();
+    await db.query("insert into auth.users values ($1)", [creator]);
+    const created: { id: string; token: string }[] = [];
+    for (let i = 0; i < 5; i++)
+      created.push(await user(creator, () => call<any>("create_board")));
+    await expect(user(creator, () => call("create_board"))).rejects.toThrow(
+      /máximo de 5/,
+    );
+    await db.query(
+      "update private.board_liveness set last_seen_at=clock_timestamp()-interval '11 minutes' where board_id=$1",
+      [created[0].id],
+    );
+    await expect(
+      user(creator, () => call("touch_board", [created[0].id])),
+    ).rejects.toThrow(/venció/);
+    await expect(
+      user(creator, () =>
+        call("join_board", [created[0].id, created[0].token]),
+      ),
+    ).rejects.toThrow(/venció/);
+    await expect(
+      user(creator, () => call("create_board")),
+    ).resolves.toHaveProperty("id");
+  });
+  it("renueva una única señal privada, rechaza intrusos y limpia datos en cascada", async () => {
+    const c = await extended();
+    const original = await db.query<{ last_seen_at: Date }>(
+      "select last_seen_at from private.board_liveness where board_id=$1",
+      [c.board],
+    );
+    await expect(
+      user(intruder, () => call("touch_board", [c.board])),
+    ).rejects.toThrow(/acceso/);
+    const afterIntruder = await db.query(
+      "select last_seen_at from private.board_liveness where board_id=$1",
+      [c.board],
+    );
+    expect(afterIntruder.rows).toEqual(original.rows);
+    await db.query(
+      "update private.board_liveness set last_seen_at=clock_timestamp()-interval '5 minutes' where board_id=$1",
+      [c.board],
+    );
+    await user(b, () => call("touch_board", [c.board]));
+    const live = await db.query<{ fresh: boolean; n: number }>(
+      "select bool_and(last_seen_at > clock_timestamp()-interval '1 minute') fresh,count(*)::int n from private.board_liveness where board_id=$1",
+      [c.board],
+    );
+    expect(live.rows[0]).toEqual({ fresh: true, n: 1 });
+    await expect(
+      user(a, () => db.query("select * from private.board_liveness")),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      user(a, () => db.query("select private.cleanup_expired_boards()")),
+    ).rejects.toThrow(/permission denied/);
+    await quickV2(a, c);
+    await db.query(
+      "update private.board_liveness set last_seen_at=clock_timestamp()-interval '11 minutes' where board_id=$1",
+      [c.board],
+    );
+    await db.query("select private.cleanup_expired_boards(100)");
+    for (const table of [
+      "public.boards",
+      "public.formations",
+      "public.players",
+      "private.members",
+      "private.board_access",
+      "private.board_liveness",
+      "private.player_state",
+      "private.player_operations",
+    ]) {
+      const column = table === "public.boards" ? "id" : "board_id";
+      const rows = await db.query(`select * from ${table} where ${column}=$1`, [
+        c.board,
+      ]);
+      expect(rows.rows).toHaveLength(0);
+    }
+    expect(
+      (await db.query("select * from public.boards where id=$1", [legacy.id]))
+        .rows,
+    ).toHaveLength(1);
   });
   it("crea tablero vacío y almacena exclusivamente el hash del token", async () => {
     const created = await user(a, () => call<any>("create_board"));
@@ -387,7 +569,7 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
     expect(s.players.find((p: any) => p.id === replacement).number).toBe(1);
     expect(s.players.find((p: any) => p.id === ids[1]).number).toBe(1);
   });
-  it("valida fútbol 7 y 11 por equipo, bloquea cambios con jugadores y rechaza atajos por RPC", async () => {
+  it("valida fútbol 7 y 11 por equipo, conserva jugadores al ampliar y rechaza atajos por RPC", async () => {
     const fresh = await user(a, () => call<any>("create_board"));
     let s = await user(a, () => call<any>("change_format", [fresh.id, 7, 1]));
     expect(s.board.players_per_team).toBe(7);
@@ -434,9 +616,11 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
         ]),
       ),
     ).rejects.toThrow(/7 jugadores/);
-    await expect(
-      user(a, () => call("change_format", [fresh.id, 11, s.board.version])),
-    ).rejects.toThrow(/formación pendiente/);
+    const beforeFormat = s.players;
+    s = await user(a, () =>
+      call<any>("change_format", [fresh.id, 11, s.board.version]),
+    );
+    expect(s.players).toEqual(beforeFormat);
     await expect(
       user(intruder, () =>
         call("change_format", [fresh.id, 11, s.board.version]),
@@ -465,6 +649,64 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
     ]);
     await expect(quick("A")).rejects.toThrow(/11 jugadores/);
+  });
+  it("permite siete titulares por equipo, ignora suplentes y rechaza ocho titulares de cualquiera de los equipos", async () => {
+    const c = await extended();
+    let s: any;
+    for (const team of ["A", "B"]) {
+      for (let i = 0; i < 7; i++) s = await quickV2(a, c, randomUUID(), team);
+    }
+    s = await quickV2(a, c, randomUUID(), "A", "bench");
+    const before = s.players;
+    const counters = await db.query(
+      "select team,last_number from private.team_numbers where formation_id=$1 order by team",
+      [c.formation],
+    );
+    const format = (n: number) =>
+      user(a, () =>
+        call<any>("change_settings_v2", [
+          c.board,
+          c.formation,
+          s.board.name,
+          s.board.orientation,
+          n,
+          s.board.version,
+        ]),
+      );
+    s = await format(7);
+    expect(s.board.players_per_team).toBe(7);
+    expect(s.players).toEqual(before);
+    expect(
+      (
+        await db.query(
+          "select team,last_number from private.team_numbers where formation_id=$1 order by team",
+          [c.formation],
+        )
+      ).rows,
+    ).toEqual(counters.rows);
+    s = await format(11);
+    for (const team of ["A", "B"]) {
+      const eighth = randomUUID();
+      s = await quickV2(a, c, eighth, team);
+      await expect(format(7)).rejects.toThrow(/más de 7 titulares/);
+      const player = s.players.find((p: any) => p.id === eighth);
+      s = await editV2(
+        a,
+        c,
+        "placement",
+        eighth,
+        { placement: "bench" },
+        player.version,
+      );
+    }
+    const withBench = s.players;
+    s = await format(7);
+    expect(s.players).toEqual(withBench);
+    expect(s.players.filter((p: any) => p.placement === "bench")).toHaveLength(
+      3,
+    );
+    s = await format(11);
+    expect(s.board.players_per_team).toBe(11);
   });
   it("migra los tableros anteriores a Original sin alterar los datos de sus jugadores", async () => {
     const migrated = await user(a, () =>

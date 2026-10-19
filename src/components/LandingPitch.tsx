@@ -266,26 +266,14 @@ function LandingPitch() {
         >
           <Surface />
         </div>
-        <div
-          className="pitch-face pitch-edge pitch-edge-left"
-          data-normal="-1,0,0"
-          aria-hidden="true"
-        />
-        <div
-          className="pitch-face pitch-edge pitch-edge-right"
-          data-normal="1,0,0"
-          aria-hidden="true"
-        />
-        <div
-          className="pitch-face pitch-edge pitch-edge-top"
-          data-normal="0,-1,0"
-          aria-hidden="true"
-        />
-        <div
-          className="pitch-face pitch-edge pitch-edge-bottom"
-          data-normal="0,1,0"
-          aria-hidden="true"
-        />
+        {Array.from({ length: 13 }, (_, index) => (
+          <div
+            key={index}
+            className="pitch-edge"
+            style={{ transform: `translateZ(${(index - 6) * 0.9}px)` }}
+            aria-hidden="true"
+          />
+        ))}
       </div>
     </div>
   );

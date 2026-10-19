@@ -10,6 +10,7 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import {
   outsideField,
   pitchGeometry,
+  constrainPlayerPosition,
   type Lease,
   type Player,
 } from "../lib/model";
@@ -51,7 +52,11 @@ type Gesture = {
 };
 
 function point(node: Konva.Group, options: Options): Point {
-  const g = pitchGeometry(options.width, options.horizontal);
+  const g = pitchGeometry(
+    options.width,
+    options.horizontal,
+    options.horizontal ? 2 : 3,
+  );
   const x = (node.x() - g.left) / g.width;
   const y = (node.y() - g.top) / g.heightInside;
   return options.horizontal ? { x: 1 - y, y: x } : { x, y };
@@ -160,22 +165,16 @@ export function usePlayerDrag(
       lastDrag.current = performance.now();
       const current = latest.current;
       const rect = n.getStage()!.container().getBoundingClientRect();
-      n.position({
-        x: Math.max(
-          19,
-          Math.min(
-            current.width - 19,
-            g.origin.x + event.clientX - g.start.x + g.rect.left - rect.left,
-          ),
+      n.position(
+        constrainPlayerPosition(
+          {
+            x: g.origin.x + event.clientX - g.start.x + g.rect.left - rect.left,
+            y: g.origin.y + event.clientY - g.start.y + g.rect.top - rect.top,
+          },
+          current.width,
+          current.horizontal,
         ),
-        y: Math.max(
-          19,
-          Math.min(
-            current.height - 19,
-            g.origin.y + event.clientY - g.start.y + g.rect.top - rect.top,
-          ),
-        ),
-      });
+      );
       g.local = n.position();
       color(outsideField(point(n, current)));
       n.getStage()!.container().style.cursor = "grabbing";

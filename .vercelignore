@@ -1,0 +1,9 @@
+.env*
+.git
+node_modules
+test-results*
+playwright-report
+supabase
+tests
+e2e
+.codebase-memory

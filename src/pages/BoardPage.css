@@ -1,0 +1,730 @@
+.board-app {
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.board-app .board-header {
+  height: 54px;
+  min-height: 54px;
+  padding: 0 20px;
+  gap: 20px;
+  flex-wrap: nowrap;
+}
+.board-app .board-header .logo {
+  font-size: 28px;
+}
+.board-app .header-board-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #64745f;
+}
+.board-app .board-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: stretch;
+}
+.board-app .sidebar {
+  position: static;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-right: 1px solid #d6ddcf;
+  background: #fafaf3;
+  display: flex;
+  flex-direction: column;
+}
+.board-app .sidebar > section {
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid #e2e6da;
+  min-width: 0;
+}
+.board-app .sidebar .section-heading {
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.board-app .sidebar .section-heading h2 {
+  font-size: 12px;
+  letter-spacing: -0.2px;
+}
+.board-app .board-header .board-title {
+  margin: 0;
+  padding: 0 0 0 16px;
+  border: 0;
+  border-left: 1px solid #d8decf;
+}
+.board-app .board-header .board-title > button {
+  justify-content: flex-start;
+  gap: 8px;
+  background: transparent;
+}
+.board-app .board-title > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-app .board-title form {
+  min-width: 0;
+}
+.board-app .board-title input {
+  margin: 0;
+  padding: 6px 8px;
+}
+.board-app .board-title > button {
+  width: 100%;
+  justify-content: space-between;
+  font-size: 13px;
+  min-height: 24px;
+}
+.board-app .board-title > button svg {
+  flex-shrink: 0;
+  color: #8a9c80;
+}
+.board-app input,
+.board-app select {
+  min-width: 0;
+}
+.board-app select {
+  width: 100%;
+  height: 34px;
+  padding: 5px 8px;
+  border: 1px solid #d6dfcc;
+  border-radius: 5px;
+  background: #f8f8f0;
+  color: #224d36;
+  font: inherit;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.board-app .board-title input {
+  width: 100%;
+}
+.board-app .formation-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: 0;
+}
+.board-app .formation-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  background: #e8eedf;
+  color: #496746;
+  border: 1px solid #dce3d3;
+  border-radius: 5px;
+}
+.board-app .formation-slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+.board-app .formation-slot {
+  height: 28px;
+  min-height: 28px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 1px solid #dce3d3;
+  border-radius: 5px;
+  background: #eef0e6;
+  color: #496746;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-app .formation-slot[aria-pressed="true"] {
+  background: #224d36;
+  border-color: #224d36;
+  color: white;
+}
+.board-app .formation-slot.empty {
+  border-style: dashed;
+  background: transparent;
+  color: #9baa91;
+}
+.board-app .formation-rename {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  min-width: 0;
+}
+.board-app .formation-rename input {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+.board-app .formation-confirm {
+  font-size: 11px;
+  padding: 8px;
+}
+.board-app .sidebar .pitch-settings > .section-heading {
+  display: none;
+}
+.board-app .sidebar .match-format {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+.board-app .format-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.board-app .format-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #496746;
+}
+.board-app .sidebar .format-options {
+  position: relative;
+  width: auto;
+  padding: 3px;
+  gap: 4px;
+  border-radius: 8px;
+}
+.board-app .sidebar .format-options::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: #b5c3a9;
+  pointer-events: none;
+}
+.board-app .sidebar .format-options button {
+  min-width: 36px;
+  min-height: 30px;
+  padding: 6px;
+  font-size: 12px;
+  border-radius: 5px;
+}
+.board-app .sidebar .format-hint {
+  font-size: 10px;
+  margin: 0;
+  color: #8a947e;
+}
+.board-app .sidebar .roster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 10px;
+}
+.board-app .roster > .section-heading,
+.board-app .sidebar-palette {
+  grid-column: 1/-1;
+}
+.board-app .roster > .section-heading {
+  margin-bottom: 0;
+}
+.board-app .sidebar-palette .player-palette {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+.board-app .sidebar-palette .palette-instruction {
+  font-size: 10px;
+  color: #7b8972;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+.board-app .sidebar-palette .palette-teams {
+  gap: 0;
+  justify-content: space-around;
+}
+.board-app .sidebar-palette .palette-token {
+  width: 36px;
+  height: 36px;
+}
+.board-app .sidebar-palette .palette-team {
+  gap: 3px;
+  font-size: 10px;
+}
+.board-app .sidebar .team-list {
+  margin: 0;
+  min-width: 0;
+}
+.board-app .sidebar .team-label {
+  font-size: 9px;
+  margin-bottom: 5px;
+}
+.board-app .team-list select {
+  font-size: 11px;
+}
+.board-app .sidebar .presence {
+  margin-top: auto;
+}
+.board-app .sidebar .presence .section-heading {
+  margin-bottom: 6px;
+}
+.board-app .sidebar .person {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+.board-app .people {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.board-app .pitch-panel {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 20px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+.board-app .pitch-heading {
+  position: absolute;
+  top: 6px;
+  left: 20px;
+  right: 20px;
+  z-index: 1;
+  margin: 0;
+  min-width: 0;
+}
+.board-app .pitch-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.board-app .pitch-heading h1 {
+  font-size: 16px;
+  line-height: 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-app .pitch-heading .back {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 8px;
+}
+.board-app .pitch-format-badge {
+  font-size: 10px;
+  color: #687c5f;
+  border: 1px solid #d6dfcc;
+  border-radius: 20px;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+.board-app .pitch-workspace {
+  display: block;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+.board-app .pitch-container.vertical {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+.board-app .field-wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.board-app .empty-pitch {
+  inset: 40% 8% auto;
+  gap: 6px;
+}
+.board-app .empty-pitch h2 {
+  font-size: 18px;
+}
+.board-app .pitch-caption {
+  position: absolute;
+  bottom: 4px;
+  left: 20px;
+  right: 20px;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  font-size: 9px;
+}
+.board-app .error-banner {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 7px 12px;
+}
+@media (max-width: 760px) and (min-height: 501px) {
+  .board-app .board-header {
+    height: 46px;
+    min-height: 46px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .board-app .board-header .logo {
+    font-size: 25px;
+  }
+  .board-app .board-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: 34px 16px;
+    height: 62px;
+    min-height: 62px;
+    gap: 0 10px;
+  }
+  .board-app .board-header .logo {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .board-app .board-header .header-board-name {
+    grid-column: 2;
+    grid-row: 1;
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .board-app .board-header .board-title > button {
+    font-size: 11px;
+  }
+  .board-app .board-header .board-title .icon {
+    padding: 3px;
+    min-width: 24px;
+    min-height: 28px;
+  }
+  .board-app .board-header .board-title form {
+    gap: 0;
+  }
+  .board-app .board-header .connection {
+    grid-column: 1/3;
+    grid-row: 2;
+    margin: 0;
+    font-size: 9px;
+  }
+  .board-app .board-header .share {
+    grid-column: 3;
+    grid-row: 1/3;
+  }
+
+  .board-app .board-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .board-app .pitch-panel {
+    order: 0;
+    flex: 1;
+    width: 100%;
+    padding: 0 10px;
+  }
+  .board-app .sidebar {
+    order: 1;
+    flex: 0 0 282px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 44px 74px 132px 32px;
+    align-content: start;
+    width: 100%;
+    border: 0;
+    border-top: 1px solid #d6ddcf;
+  }
+  .board-app .sidebar > section {
+    padding: 6px 10px;
+  }
+  .board-app .sidebar .pitch-settings {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .board-app .sidebar .format-label {
+    font-size: 10px;
+  }
+  .board-app .sidebar .format-toggle-row {
+    gap: 6px;
+  }
+  .board-app .sidebar .format-options {
+    padding: 2px;
+  }
+  .board-app .sidebar .format-options button {
+    min-width: 26px;
+    min-height: 26px;
+    padding: 3px;
+  }
+  .board-app .sidebar .format-hint {
+    display: none;
+  }
+  .board-app .sidebar .formations-nav {
+    grid-column: 1/-1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 4px;
+  }
+  .board-app .formations-nav > .section-heading {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+  .board-app .formations-nav h2 {
+    display: block;
+  }
+  .board-app .formation-slots {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .board-app .sidebar .roster {
+    grid-row: 3;
+    order: 0;
+    grid-column: 1/-1;
+    gap: 4px 12px;
+  }
+  .board-app .roster > .section-heading {
+    display: none;
+  }
+  .board-app .sidebar .presence {
+    grid-row: 4;
+    order: 0;
+    grid-column: 1/-1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+  .board-app .sidebar .presence .section-heading {
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .board-app .sidebar .presence .eyebrow {
+    font-size: 8px;
+  }
+  .board-app .sidebar .presence .person {
+    font-size: 9px;
+    padding: 3px 5px;
+  }
+  .board-app .sidebar .presence .count {
+    padding: 2px 5px;
+  }
+  .board-app .formation-rename,
+  .board-app .formation-confirm {
+    position: fixed;
+    z-index: 10;
+    left: 10px;
+    right: 10px;
+    bottom: 218px;
+    padding: 12px;
+    margin: 0;
+    background: #fafaf3;
+    border: 1px solid #cdd7c7;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px #0002;
+  }
+  .board-app .pitch-heading h1 {
+    font-size: 13px;
+  }
+  .board-app .pitch-heading {
+    top: 4px;
+    left: 10px;
+    right: 10px;
+  }
+  .board-app .pitch-heading > div {
+    gap: 6px;
+  }
+  .board-app .pitch-heading .back {
+    font-size: 7px;
+  }
+  .board-app .pitch-caption {
+    left: 10px;
+    right: 10px;
+    justify-content: center;
+    font-size: 8px;
+  }
+  .board-app .pitch-caption > span:last-child {
+    display: none;
+  }
+  .board-app .sidebar-palette .palette-instruction {
+    display: none;
+  }
+  .board-app .sidebar-palette .palette-token {
+    width: 32px;
+    height: 32px;
+  }
+  .board-app .sidebar-palette .palette-team {
+    font-size: 9px;
+  }
+  .board-app .sidebar .roster {
+    gap: 5px 12px;
+  }
+  .board-app .empty-pitch h2 {
+    font-size: 15px;
+  }
+  .board-app .empty-pitch p {
+    font-size: 10px;
+  }
+  .board-app .empty-pitch > svg {
+    display: none;
+  }
+}
+@media (max-height: 650px) and (min-width: 761px) {
+  .board-app .sidebar > section {
+    padding: 8px 12px;
+  }
+  .board-app .sidebar-palette .palette-instruction {
+    display: none;
+  }
+  .board-app .sidebar .roster {
+    gap: 5px 10px;
+  }
+}
+@media (max-height: 500px) {
+  .board-app .board-header {
+    height: 40px;
+    min-height: 40px;
+  }
+  .board-app .board-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .board-app .sidebar {
+    width: auto;
+  }
+  .board-app .sidebar > section {
+    padding: 5px 10px;
+  }
+  .board-app .sidebar .section-heading {
+    margin-bottom: 4px;
+  }
+  .board-app .sidebar .roster {
+    gap: 3px 8px;
+  }
+  .board-app .sidebar-palette .palette-instruction {
+    display: none;
+  }
+  .board-app .sidebar-palette .palette-token {
+    width: 28px;
+    height: 28px;
+  }
+  .board-app .sidebar-palette .palette-team {
+    font-size: 9px;
+    gap: 2px;
+  }
+  .board-app select {
+    height: 30px;
+  }
+  .board-app .sidebar .format-hint {
+    display: none;
+  }
+  .board-app .sidebar .format-options button {
+    min-height: 24px;
+    padding: 3px;
+  }
+  .board-app .sidebar .presence {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .board-app .sidebar .presence .section-heading {
+    margin: 0;
+  }
+  .board-app .pitch-caption {
+    display: none;
+  }
+  .board-app .pitch-panel {
+    grid-template-rows: minmax(0, 1fr);
+    padding: 0 10px;
+  }
+  .board-app .pitch-heading {
+    left: 10px;
+    right: 10px;
+  }
+  .board-app .empty-pitch p {
+    display: none;
+  }
+  .board-app .formation-rename,
+  .board-app .formation-confirm {
+    position: fixed;
+    z-index: 10;
+    left: 10px;
+    top: 80px;
+    width: 260px;
+    padding: 12px;
+    background: #fafaf3;
+    border: 1px solid #cdd7c7;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px #0002;
+  }
+}
+
+@media (max-height: 700px) {
+  .board-app .overlay {
+    padding: 10px;
+  }
+  .board-app .modal {
+    padding: 16px;
+    max-height: calc(100dvh - 20px);
+  }
+  .board-app .modal h2 {
+    font-size: 20px;
+    margin: 6px 0 10px;
+  }
+  .board-app .modal label {
+    margin: 8px 0;
+    font-size: 11px;
+  }
+  .board-app .modal input {
+    padding: 7px 9px;
+    margin-top: 4px;
+  }
+  .board-app .modal fieldset {
+    margin: 10px 0;
+  }
+  .board-app .modal legend {
+    margin-bottom: 5px;
+  }
+  .board-app .modal .team-option {
+    padding: 8px 12px;
+  }
+  .board-app .modal .delete-area {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  .board-app .modal .delete-area > .secondary {
+    margin-bottom: 8px;
+  }
+  .board-app .modal .delete-area p {
+    margin-bottom: 6px;
+  }
+}
+@media (max-height: 500px) and (min-width: 600px) {
+  .board-app .modal {
+    max-width: 580px;
+  }
+  .board-app .modal > .eyebrow {
+    display: none;
+  }
+  .board-app .modal form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+    align-items: end;
+  }
+  .board-app .modal form > .error {
+    grid-column: 1/-1;
+  }
+  .board-app .modal .delete-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .board-app .modal .delete-area > .secondary {
+    width: auto;
+    margin: 0;
+  }
+}

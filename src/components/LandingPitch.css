@@ -1,0 +1,104 @@
+/* The existing hero box remains the layout anchor; only its model rotates. */
+.hero-art.pitch-scene {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  perspective: 1100px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+.pitch-scene[data-dragging="true"] {
+  cursor: grabbing;
+}
+.pitch-scene:focus-visible:not([data-pointer-focus="true"]) {
+  outline: 2px solid #ca6839;
+  outline-offset: 18px;
+}
+.pitch-solid {
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.pitch-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #183b2c;
+  border-radius: 12px;
+}
+.pitch-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: var(--face-shade, 0.04);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.pitch-front {
+  position: relative;
+  padding: 24px 25px 18px;
+  transform: translateZ(6px);
+  box-shadow: 0 22px 40px #19362618;
+}
+.pitch-back {
+  position: absolute;
+  inset: 0;
+  padding: 24px 25px;
+  display: flex;
+  transform: rotateY(180deg) translateZ(6px);
+}
+.pitch-back .illustration-pitch {
+  margin: 0;
+  height: auto;
+  flex: 1;
+}
+.pitch-edge {
+  position: absolute;
+  border-radius: 0;
+}
+.pitch-edge-left,
+.pitch-edge-right {
+  top: 0;
+  height: 100%;
+  width: 12px;
+}
+.pitch-edge-left {
+  left: 0;
+  transform: translateX(-50%) rotateY(-90deg);
+}
+.pitch-edge-right {
+  left: 100%;
+  transform: translateX(-50%) rotateY(90deg);
+}
+.pitch-edge-top,
+.pitch-edge-bottom {
+  left: 0;
+  width: 100%;
+  height: 12px;
+}
+.pitch-edge-top {
+  top: 0;
+  transform: translateY(-50%) rotateX(90deg);
+}
+.pitch-edge-bottom {
+  top: 100%;
+  transform: translateY(-50%) rotateX(-90deg);
+}
+@supports not (transform-style: preserve-3d) {
+  .hero-art.pitch-scene {
+    cursor: default;
+    touch-action: auto;
+    transform: rotate(3deg);
+  }
+  .pitch-solid {
+    transform: none !important;
+  }
+  .pitch-back,
+  .pitch-edge {
+    display: none;
+  }
+}

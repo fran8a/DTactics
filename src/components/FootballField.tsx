@@ -8,6 +8,8 @@ import {
   Group,
   Text,
   Arc,
+  Arrow,
+  RegularPolygon,
 } from "react-konva";
 import type Konva from "konva";
 import { usePlayerDrag, type DragCallbacks } from "./usePlayerDrag";
@@ -19,6 +21,7 @@ import {
   type Player,
   type Lease,
   type Participant,
+  type TacticalPoint,
 } from "../lib/model";
 type Props = DragCallbacks & {
   players: Player[];
@@ -29,6 +32,15 @@ type Props = DragCallbacks & {
   now: number;
   enabled: boolean;
   onSelect: (p: Player) => void;
+  routes?: Record<string, TacticalPoint[]>;
+  routePlayers?: Player[];
+  preparing?: boolean;
+  playbackLocked?: boolean;
+  selectedRoute?: string | null;
+  draftPoints?: TacticalPoint[];
+  onRouteSelect?: (player: Player) => void;
+  onWaypoint?: (point: TacticalPoint) => void;
+  onWaypointChange?: (index: number, point: TacticalPoint) => void;
 };
 export default function FootballField(props: Props) {
   const box = useRef<HTMLDivElement>(null);
@@ -39,6 +51,7 @@ export default function FootballField(props: Props) {
     top: number;
   } | null>(null);
   const [width, setWidth] = useState(500);
+  const [ball, setBall] = useState<TacticalPoint>({ x: 0.5, y: 0.5 });
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width: availableWidth, height: availableHeight } =
@@ -82,11 +95,46 @@ export default function FootballField(props: Props) {
     viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
   }, [width, props.horizontal]);
   const line = "#c9e1cf";
+  const screenPoint = (point: TacticalPoint) => {
+    const p = toScreen(point.x, point.y, props.horizontal);
+    return {
+      x: geometry.left + p.x * geometry.width,
+      y: geometry.top + p.y * geometry.heightInside,
+    };
+  };
+  const canonicalPoint = (x: number, y: number) => {
+    const sx = Math.max(0, Math.min(1, (x - geometry.left) / geometry.width));
+    const sy = Math.max(
+      0,
+      Math.min(1, (y - geometry.top) / geometry.heightInside),
+    );
+    return props.horizontal ? { x: 1 - sy, y: sx } : { x: sx, y: sy };
+  };
+  const routePlayers = props.routePlayers ?? props.players;
+  // Include the outline in the bounds so the entire ball stays on the pitch.
+  const ballRadius = Math.min(
+    12,
+    geometry.width / 4,
+    geometry.heightInside / 4,
+  );
+  const ballInset = ballRadius + 1;
+  const constrainBall = (position: { x: number; y: number }) => ({
+    x: Math.max(
+      geometry.left + ballInset,
+      Math.min(geometry.left + geometry.width - ballInset, position.x),
+    ),
+    y: Math.max(
+      geometry.top + ballInset,
+      Math.min(geometry.top + geometry.heightInside - ballInset, position.y),
+    ),
+  });
+  const ballDisplay = constrainBall(screenPoint(ball));
   return (
     <div
       className="field-wrap"
       ref={box}
       data-horizontal={props.horizontal}
+      data-preparing={!!props.preparing}
       data-pitch-left={geometry.left}
       data-pitch-top={geometry.top}
       data-pitch-width={geometry.width}
@@ -98,6 +146,24 @@ export default function FootballField(props: Props) {
           width={width}
           height={height}
           onPointerDown={(event) => {
+            if (
+              props.preparing &&
+              !props.playbackLocked &&
+              event.target === event.target.getStage()
+            ) {
+              const p = event.target.getStage()?.getPointerPosition();
+              if (
+                p &&
+                p.x >= geometry.left &&
+                p.x <= geometry.left + geometry.width &&
+                p.y >= geometry.top &&
+                p.y <= geometry.top + geometry.heightInside
+              ) {
+                event.evt.preventDefault();
+                props.onWaypoint?.(canonicalPoint(p.x, p.y));
+                return;
+              }
+            }
             if (
               props.horizontal ||
               event.target !== event.target.getStage() ||
@@ -231,6 +297,149 @@ export default function FootballField(props: Props) {
             </Group>
           </Layer>
           <Layer>
+            {routePlayers
+              .filter((p) => p.placement === "field")
+              .map((player) => {
+                const selected =
+                  props.preparing && props.selectedRoute === player.id;
+                const points = selected
+                  ? (props.draftPoints ?? [])
+                  : (props.routes?.[player.id] ?? []);
+                if (!points.length) return null;
+                const color = player.team === "A" ? "#ff9048" : "#569cfa";
+                return (
+                  <Group key={player.id}>
+                    <Arrow
+                      listening={false}
+                      points={[{ x: player.x, y: player.y }, ...points].flatMap(
+                        (p) => {
+                          const s = screenPoint(p);
+                          return [s.x, s.y];
+                        },
+                      )}
+                      stroke={color}
+                      fill={color}
+                      strokeWidth={selected ? 3.5 : 2.5}
+                      pointerLength={10}
+                      pointerWidth={10}
+                      lineCap="round"
+                      lineJoin="round"
+                      opacity={selected ? 1 : 0.8}
+                    />
+                    {selected &&
+                      !props.playbackLocked &&
+                      points.map((p, index) => {
+                        const s = screenPoint(p);
+                        return (
+                          <Circle
+                            key={index}
+                            x={s.x}
+                            y={s.y}
+                            radius={7}
+                            hitStrokeWidth={18}
+                            stroke="white"
+                            strokeWidth={2}
+                            fill={color}
+                            draggable
+                            dragBoundFunc={(position) => ({
+                              x: Math.max(
+                                geometry.left,
+                                Math.min(
+                                  geometry.left + geometry.width,
+                                  position.x,
+                                ),
+                              ),
+                              y: Math.max(
+                                geometry.top,
+                                Math.min(
+                                  geometry.top + geometry.heightInside,
+                                  position.y,
+                                ),
+                              ),
+                            })}
+                            onPointerDown={(e) => {
+                              e.cancelBubble = true;
+                            }}
+                            onDragMove={(e) =>
+                              props.onWaypointChange?.(
+                                index,
+                                canonicalPoint(e.target.x(), e.target.y()),
+                              )
+                            }
+                            onDragEnd={(e) =>
+                              props.onWaypointChange?.(
+                                index,
+                                canonicalPoint(e.target.x(), e.target.y()),
+                              )
+                            }
+                          />
+                        );
+                      })}
+                  </Group>
+                );
+              })}
+          </Layer>
+          <Layer>
+            <Group
+              name="ball"
+              listening={!props.preparing}
+              x={ballDisplay.x}
+              y={ballDisplay.y}
+              draggable={props.enabled && !props.preparing}
+              dragBoundFunc={constrainBall}
+              onPointerDown={(event) => {
+                event.cancelBubble = true;
+              }}
+              onDragEnd={(event) => {
+                const position = constrainBall(event.target.position());
+                event.target.position(position);
+                setBall(canonicalPoint(position.x, position.y));
+              }}
+              onMouseEnter={(event) => {
+                const stage = event.target.getStage();
+                if (stage)
+                  stage.container().style.cursor =
+                    props.enabled && !props.preparing ? "grab" : "default";
+              }}
+              onMouseLeave={(event) => {
+                const stage = event.target.getStage();
+                if (stage) stage.container().style.cursor = "default";
+              }}
+            >
+              <Circle
+                radius={ballRadius}
+                fill="#fffdf4"
+                stroke="#17251e"
+                strokeWidth={2}
+                shadowColor="#000"
+                shadowBlur={5}
+                shadowOpacity={0.25}
+                shadowOffsetY={2}
+              />
+              <RegularPolygon
+                sides={5}
+                radius={ballRadius * 0.45}
+                fill="#17251e"
+                listening={false}
+              />
+              {Array.from({ length: 5 }, (_, index) => {
+                const angle = ((index * 72 - 90) * Math.PI) / 180;
+                return (
+                  <Line
+                    key={index}
+                    points={[
+                      Math.cos(angle) * ballRadius * 0.4,
+                      Math.sin(angle) * ballRadius * 0.4,
+                      Math.cos(angle) * ballRadius * 0.9,
+                      Math.sin(angle) * ballRadius * 0.9,
+                    ]}
+                    stroke="#17251e"
+                    strokeWidth={1.5}
+                    listening={false}
+                  />
+                );
+              })}
+            </Group>
             {props.players.map((player, index) => (
               <Token
                 key={player.id}
@@ -280,18 +489,18 @@ function Token({
     player.placement === "bench"
       ? toScreen(benchPosition.x, benchPosition.y, props.horizontal)
       : fieldPosition;
-  const display = constrainPlayerPosition(
-    { x: left + position.x * w, y: top + position.y * h },
-    width,
-    props.horizontal,
-  );
+  const rawDisplay = { x: left + position.x * w, y: top + position.y * h };
+  const display =
+    player.placement === "bench"
+      ? constrainPlayerPosition(rawDisplay, width, props.horizontal)
+      : rawDisplay;
   const drag = usePlayerDrag(node, {
     player,
     width,
     height,
     horizontal: props.horizontal,
     position: display,
-    enabled: props.enabled,
+    enabled: props.enabled && !props.preparing && !props.playbackLocked,
     lock,
     begin: props.begin,
     moving: props.moving,
@@ -305,12 +514,20 @@ function Token({
       y={display.y}
       draggable={false}
       onDblClick={() => {
-        if (drag.canEdit()) props.onSelect(player);
+        if (!props.preparing && !props.playbackLocked && drag.canEdit())
+          props.onSelect(player);
       }}
       onDblTap={() => {
-        if (drag.canEdit()) props.onSelect(player);
+        if (!props.preparing && !props.playbackLocked && drag.canEdit())
+          props.onSelect(player);
       }}
-      onPointerDown={drag.onPointerDown}
+      onPointerDown={(event) => {
+        if (props.preparing) {
+          event.cancelBubble = true;
+          if (!props.playbackLocked && player.placement === "field")
+            props.onRouteSelect?.(player);
+        } else drag.onPointerDown(event);
+      }}
       onMouseEnter={() => {
         if (node.current)
           node.current.getStage()!.container().style.cursor = lock
@@ -322,6 +539,9 @@ function Token({
           node.current.getStage()!.container().style.cursor = "default";
       }}
     >
+      {props.preparing && props.selectedRoute === player.id && (
+        <Circle radius={24} stroke="white" strokeWidth={2} listening={false} />
+      )}
       <Circle
         radius={18}
         hitStrokeWidth={10}

@@ -154,6 +154,230 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
   afterAll(async () => {
     await db.close();
   });
+  it("valida recorridos de titulares, versiones, permisos y reintentos tácticos", async () => {
+    const c = await extended();
+    const player = randomUUID();
+    let s = await quickV2(a, c, player);
+    const substitute = randomUUID();
+    s = await quickV2(a, c, substitute, "B", "bench");
+    expect(s.tactics).toEqual({ routes: {}, duration_ms: 5000, version: 1 });
+    const routes = {
+      [player]: [
+        { x: 0.4, y: 0.5 },
+        { x: 0.7, y: 0.2 },
+      ],
+    };
+    const save = (
+      actor: string,
+      value: unknown,
+      duration = 5000,
+      version = 1,
+      operation = randomUUID(),
+    ) =>
+      user(actor, () =>
+        call<any>("edit_tactics", [
+          c.board,
+          c.formation,
+          JSON.stringify(value),
+          duration,
+          version,
+          operation,
+        ]),
+      );
+    await expect(save(intruder, routes)).rejects.toThrow(/acceso/);
+    await expect(
+      save(a, { [substitute]: [{ x: 0.5, y: 0.5 }] }),
+    ).rejects.toThrow(/titulares/);
+    await expect(
+      save(a, { [randomUUID()]: [{ x: 0.5, y: 0.5 }] }),
+    ).rejects.toThrow(/titulares/);
+    await expect(save(a, { [player]: [{ x: -0.1, y: 0.5 }] })).rejects.toThrow(
+      /dentro de la cancha/,
+    );
+    await expect(save(a, { [player]: [{ x: "0.2", y: 0.5 }] })).rejects.toThrow(
+      /válidos/,
+    );
+    await expect(
+      save(a, {
+        [player]: Array.from({ length: 25 }, () => ({ x: 0.5, y: 0.5 })),
+      }),
+    ).rejects.toThrow(/24 puntos/);
+    await expect(save(a, routes, 999)).rejects.toThrow(/1 a 30/);
+    const operation = randomUUID();
+    const playersBefore = s.players;
+    s = await save(a, routes, 3000, 1, operation);
+    expect(s.tactics).toEqual({ routes, duration_ms: 3000, version: 2 });
+    expect(s.players).toEqual(playersBefore);
+    expect(s.operation).toMatchObject({
+      id: operation,
+      kind: "tactics",
+      actor_id: a,
+    });
+    expect((await save(a, routes, 3000, 1, operation)).tactics.version).toBe(2);
+    await expect(save(b, {}, 3000, 1)).rejects.toThrow(/jugada cambió/);
+    s = await save(b, routes, 4000, 2);
+    await expect(
+      user(a, () =>
+        call("reverse_tactics_operation", [
+          c.board,
+          c.formation,
+          operation,
+          "undo",
+        ]),
+      ),
+    ).rejects.toThrow(/cambios posteriores/);
+    await expect(
+      user(b, () =>
+        call("reverse_tactics_operation", [
+          c.board,
+          c.formation,
+          operation,
+          "undo",
+        ]),
+      ),
+    ).rejects.toThrow(/historial/);
+    await expect(
+      user(a, () => db.query("select * from private.tactical_state")),
+    ).rejects.toThrow(/permission denied/);
+    expect(s.tactics.duration_ms).toBe(4000);
+  });
+  it("integra borrar recorridos con deshacer/rehacer y descarta la rama al editar jugadores", async () => {
+    const c = await extended();
+    const player = randomUUID();
+    let s = await quickV2(a, c, player);
+    const save = (routes: unknown, version: number) =>
+      user(a, () =>
+        call<any>("edit_tactics", [
+          c.board,
+          c.formation,
+          JSON.stringify(routes),
+          5000,
+          version,
+          randomUUID(),
+        ]),
+      );
+    const routes = { [player]: [{ x: 0.7, y: 0.3 }] };
+    s = await save(routes, 1);
+    s = await save({}, s.tactics.version);
+    const clear = s.operation.id;
+    s = await user(a, () =>
+      call<any>("reverse_tactics_operation", [
+        c.board,
+        c.formation,
+        clear,
+        "undo",
+      ]),
+    );
+    expect(s.tactics.routes).toEqual(routes);
+    s = await user(a, () =>
+      call<any>("reverse_tactics_operation", [
+        c.board,
+        c.formation,
+        clear,
+        "redo",
+      ]),
+    );
+    expect(s.tactics.routes).toEqual({});
+    s = await user(a, () =>
+      call<any>("reverse_tactics_operation", [
+        c.board,
+        c.formation,
+        clear,
+        "undo",
+      ]),
+    );
+    s = await editV2(
+      a,
+      c,
+      "update",
+      player,
+      { name: "Después de la flecha", number: 1, team: "A" },
+      s.players[0].version,
+    );
+    await expect(
+      user(a, () =>
+        call("reverse_tactics_operation", [
+          c.board,
+          c.formation,
+          clear,
+          "redo",
+        ]),
+      ),
+    ).rejects.toThrow(/rama de rehacer/);
+    const edit = s.operation.id;
+    s = await reverseV2(a, c, edit);
+    s = await save({}, s.tactics.version);
+    await expect(reverseV2(a, c, edit, "redo")).rejects.toThrow(
+      /rama de rehacer/,
+    );
+  });
+  it("copia recorridos a los nuevos IDs y limpia jugadores suplentes, eliminados y pizarras vencidas", async () => {
+    const c = await extended();
+    const player = randomUUID();
+    let s = await quickV2(a, c, player);
+    const routes = { [player]: [{ x: 0.6, y: 0.4 }] };
+    s = await user(a, () =>
+      call<any>("edit_tactics", [
+        c.board,
+        c.formation,
+        JSON.stringify(routes),
+        4500,
+        1,
+        randomUUID(),
+      ]),
+    );
+    const copy = randomUUID();
+    const duplicated = await user(a, () =>
+      call<any>("manage_formation", [
+        c.board,
+        "duplicate",
+        copy,
+        null,
+        c.formation,
+        s.formation.version,
+      ]),
+    );
+    expect(duplicated.players[0].id).not.toBe(player);
+    expect(duplicated.tactics).toEqual({
+      routes: { [duplicated.players[0].id]: routes[player] },
+      duration_ms: 4500,
+      version: 1,
+    });
+    s = await editV2(
+      a,
+      c,
+      "placement",
+      player,
+      { placement: "bench" },
+      s.players[0].version,
+    );
+    expect(s.tactics.routes).toEqual({});
+    expect(duplicated.tactics.routes).not.toEqual({});
+    const cp = duplicated.players[0];
+    const removed = await editV2(
+      a,
+      { board: c.board, formation: copy },
+      "delete",
+      cp.id,
+      {},
+      cp.version,
+    );
+    expect(removed.tactics.routes).toEqual({});
+    await db.query(
+      "update private.board_liveness set last_seen_at=clock_timestamp()-interval '11 minutes' where board_id=$1",
+      [c.board],
+    );
+    await db.query("select private.cleanup_expired_boards(100)");
+    for (const table of [
+      "private.tactical_state",
+      "private.tactical_operations",
+    ]) {
+      expect(
+        (await db.query(`select * from ${table} where board_id=$1`, [c.board]))
+          .rows,
+      ).toHaveLength(0);
+    }
+  });
   it("reutiliza enlaces opacos por formación y autoriza al resolverlos sin exponer el token anterior", async () => {
     const c = await extended();
     const code = await user(a, () =>

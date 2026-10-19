@@ -1,0 +1,128 @@
+.board-app .sidebar .tactics-panel {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+.tactics-heading,
+.tactics-playback,
+.tactics-edit-actions,
+.tactics-footer,
+.tactics-history {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.tactics-heading {
+  margin-bottom: 5px;
+}
+.tactics-heading h2 {
+  margin: 0 auto 0 0;
+  font-size: 12px;
+}
+.board-app .tactics-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px;
+  border: 1px solid #d6dfcc;
+  border-radius: 5px;
+  background: #eef0e6;
+  color: #224d36;
+}
+.board-app .tactics-panel button:focus-visible {
+  outline: 2px solid #ca6839;
+  outline-offset: 1px;
+}
+.board-app .tactics-panel button:hover {
+  background: #e0e8d8;
+}
+.board-app .tactics-panel button:disabled {
+  opacity: 0.4;
+}
+.board-app .tactics-panel .tactics-mode {
+  gap: 4px;
+  font-size: 10px;
+}
+.board-app .tactics-panel .tactics-mode.active,
+.board-app .tactics-panel .tactics-play,
+.board-app .tactics-panel .tactics-save {
+  background: #224d36;
+  color: #fff;
+}
+.board-app .tactics-panel .tactics-icon {
+  width: 28px;
+  flex-shrink: 0;
+}
+.tactics-duration {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.board-app .tactics-duration input {
+  width: 45px;
+  margin: 0;
+  padding: 3px;
+  min-height: 28px;
+  font-size: 11px;
+  border: 1px solid #d6dfcc;
+  border-radius: 4px;
+}
+.tactics-footer {
+  justify-content: space-between;
+  margin-top: 3px;
+  font-size: 9px;
+  color: #64745f;
+}
+.board-app .tactics-history .tactics-icon {
+  min-height: 22px;
+  width: 23px;
+  padding: 3px;
+}
+.board-app .tactics-editor select {
+  height: 28px;
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+.tactics-edit-actions {
+  justify-content: flex-end;
+}
+.tactics-point-count {
+  margin-right: auto;
+  font-size: 10px;
+  color: #64745f;
+}
+.tactics-hint {
+  font-size: 9px;
+  line-height: 1.3;
+  margin: 4px 0 6px;
+  color: #64745f;
+}
+.tactics-error {
+  margin: 4px 0 0;
+  color: #a64430;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.tactics-progress {
+  display: block;
+  height: 4px;
+  width: 100%;
+  margin-top: 4px;
+  accent-color: #224d36;
+}
+.board-app .tactics-panel .overlay {
+  overflow: auto;
+}
+@media (max-height: 500px) {
+  .board-app .sidebar .tactics-panel {
+    padding: 4px 10px;
+  }
+  .tactics-hint {
+    margin: 3px 0;
+  }
+}

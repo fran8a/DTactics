@@ -13,6 +13,7 @@ import {
   events,
   type Participant,
   type Snapshot,
+  type TacticsConfig,
 } from "../lib/model";
 
 type Preview = { x: number; y: number; lease: string; seq: number };
@@ -717,12 +718,17 @@ export function useBoard(
     if (!op) return;
     try {
       const result = await run(() =>
-        rpc<Snapshot>("reverse_operation", {
-          p_board: id,
-          p_formation: formation,
-          p_operation: op.id,
-          p_direction: direction,
-        }),
+        rpc<Snapshot>(
+          op.kind === "tactics"
+            ? "reverse_tactics_operation"
+            : "reverse_operation",
+          {
+            p_board: id,
+            p_formation: formation,
+            p_operation: op.id,
+            p_direction: direction,
+          },
+        ),
       );
       histories.current[formation] = stepHistory(stacks, direction);
       setHistoryVersion((v) => v + 1);
@@ -745,6 +751,38 @@ export function useBoard(
       await refreshRef.current();
     }
   };
+  const saveTactics = async (
+    config: TacticsConfig,
+    version: number,
+    operation = crypto.randomUUID(),
+  ) => {
+    if (
+      !online.current ||
+      !active.current ||
+      pendingRef.current ||
+      drag.current
+    )
+      throw new Error(
+        "Esperá a que se guarden los cambios para editar la jugada.",
+      );
+    try {
+      const result = await run(() =>
+        rpc<Snapshot>("edit_tactics", {
+          p_board: id,
+          p_formation: active.current,
+          p_routes: config.routes,
+          p_duration_ms: config.duration_ms,
+          p_version: version,
+          p_operation: operation,
+        }),
+      );
+      apply(result);
+      record(result);
+    } catch (e) {
+      await refreshRef.current();
+      throw e;
+    }
+  };
   const stacks = selection
     ? (histories.current[selection] ?? emptyHistory())
     : emptyHistory();
@@ -765,6 +803,7 @@ export function useBoard(
     changeFormat,
     selectFormation,
     manageFormation,
+    saveTactics,
     selection,
     busy: pending > 0 || dragging,
     dragging,

@@ -34,15 +34,22 @@ export type Formation = {
   version: number;
 };
 export type HistoryOperation = {
+  kind?: "tactics";
   id: string;
   formation_id: string;
   player_id: string;
   type: string;
   actor_id: string;
-  before_data: Player | null;
-  after_data: Player | null;
+  before_data: Player | TacticsConfig | null;
+  after_data: Player | TacticsConfig | null;
   created_at: string;
 };
+export type TacticalPoint = { x: number; y: number };
+export type TacticsConfig = {
+  routes: Record<string, TacticalPoint[]>;
+  duration_ms: number;
+};
+export type Tactics = TacticsConfig & { version: number };
 export type Snapshot = {
   board: Board;
   formation: Formation;
@@ -50,6 +57,7 @@ export type Snapshot = {
   players: Player[];
   locks: Lease[];
   operation?: HistoryOperation;
+  tactics?: Tactics;
 };
 export type Participant = {
   user_id: string;
@@ -197,6 +205,7 @@ export function acceptSnapshot(current: Snapshot | null, incoming: Snapshot) {
     : current;
 }
 export const events = [
+  "tactics_updated",
   "player_added",
   "player_updated",
   "player_deleted",

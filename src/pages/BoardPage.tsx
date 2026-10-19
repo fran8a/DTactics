@@ -22,6 +22,10 @@ import { Logo } from "../components/Identity";
 import FormationTabs from "../components/FormationTabs";
 import { historyShortcut } from "../lib/history";
 import { getBoardLink } from "../lib/api";
+import { emptyTactics } from "../lib/tactics";
+import { useTacticalPlayback } from "../features/useTacticalPlayback";
+import { useTacticsEditor } from "../features/useTacticsEditor";
+import TacticsPanel from "../components/TacticsPanel";
 import "./BoardPage.css";
 const FootballField = lazy(() => import("../components/FootballField"));
 export default function BoardPage({
@@ -49,6 +53,22 @@ export default function BoardPage({
     [renaming, setRenaming] = useState(false),
     [title, setTitle] = useState(""),
     [saving, setSaving] = useState(false);
+  const players = (board.data?.players ?? []).map((p) => {
+    const preview = board.previews[p.id];
+    return preview ? { ...p, x: preview.x, y: preview.y } : p;
+  });
+  const tactics = board.data?.tactics ?? emptyTactics;
+  const playback = useTacticalPlayback(
+    board.data?.formation.id,
+    players,
+    tactics,
+  );
+  const tacticEditor = useTacticsEditor(
+    board.data?.formation.id,
+    players,
+    tactics,
+    board.saveTactics,
+  );
   const [palettePending, setPalettePending] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [horizontal, setHorizontal] = useState(() => {
@@ -107,7 +127,10 @@ export default function BoardPage({
         board.busy ||
         saving ||
         palettePending ||
-        editor
+        editor ||
+        playback.locked ||
+        tacticEditor.dirty ||
+        tacticEditor.busy
       )
         return;
       event.preventDefault();
@@ -124,6 +147,9 @@ export default function BoardPage({
     saving,
     palettePending,
     editor,
+    playback.locked,
+    tacticEditor.dirty,
+    tacticEditor.busy,
   ]);
   async function setPlacement(
     player: Player,
@@ -178,6 +204,9 @@ export default function BoardPage({
         !board.connected ||
         saving ||
         board.busy ||
+        playback.locked ||
+        tacticEditor.preparing ||
+        tacticEditor.busy ||
         (board.data?.players.length ?? 0) >= 40
       }
       fullTeams={{
@@ -237,10 +266,6 @@ export default function BoardPage({
         <Link to="/">Volver al inicio</Link>
       </div>
     );
-  const players = data.players.map((p) => {
-    const preview = board.previews[p.id];
-    return preview ? { ...p, x: preview.x, y: preview.y } : p;
-  });
   const formatBlocked =
     !board.connected ||
     saving ||
@@ -248,7 +273,9 @@ export default function BoardPage({
     !!editor ||
     palettePending ||
     board.busy ||
-    confirmClear;
+    confirmClear ||
+    playback.locked ||
+    tacticEditor.busy;
   const exceedsFormat = (format: 7 | 11) =>
     (["A", "B"] as const).some(
       (team) =>
@@ -263,9 +290,13 @@ export default function BoardPage({
     palettePending ||
     !!editor ||
     renaming ||
-    confirmClear;
+    confirmClear ||
+    playback.locked ||
+    tacticEditor.busy;
   return (
-    <div className="board-app">
+    <div
+      className={`board-app ${tacticEditor.preparing ? "preparing-tactics" : ""}`}
+    >
       <header className="board-header">
         <Logo />
         <div className="board-title header-board-name">
@@ -304,7 +335,9 @@ export default function BoardPage({
             <button
               aria-label="Editar nombre de la pizarra"
               title={data.board.name}
-              disabled={!board.connected}
+              disabled={
+                !board.connected || playback.locked || tacticEditor.busy
+              }
               onClick={() => {
                 setTitle(data.board.name);
                 setRenaming(true);
@@ -436,51 +469,82 @@ export default function BoardPage({
               </span>
             </div>
             <div className="sidebar-palette">{palette}</div>
-            {(["A", "B"] as const).map((team) => (
-              <div className="team-list" key={team}>
-                <div className="team-label">
-                  <i className={`dot team-${team}`} />
-                  EQUIPO {team}
-                  <span>
-                    {
-                      data.players.filter(
-                        (p) => p.team === team && p.placement === "field",
-                      ).length
-                    }
-                    /{data.board.players_per_team}
-                  </span>
+            <div className="team-columns">
+              {(["A", "B"] as const).map((team) => (
+                <div className="team-list" key={team}>
+                  <div className="team-label">
+                    <i className={`dot team-${team}`} />
+                    EQUIPO {team}
+                    <span>
+                      {
+                        data.players.filter(
+                          (p) => p.team === team && p.placement === "field",
+                        ).length
+                      }
+                      /{data.board.players_per_team}
+                    </span>
+                  </div>
+                  <ul
+                    className="team-players"
+                    aria-label={`Jugadores del equipo ${team}`}
+                  >
+                    {data.players
+                      .filter((p) => p.team === team)
+                      .map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className={`roster-player team-${team}`}
+                            aria-label={`Editar ${p.name}, número ${p.number}, equipo ${team}`}
+                            disabled={
+                              !board.connected ||
+                              playback.locked ||
+                              tacticEditor.busy ||
+                              (tacticEditor.preparing &&
+                                p.placement === "bench")
+                            }
+                            onClick={() =>
+                              tacticEditor.preparing
+                                ? tacticEditor.select(p)
+                                : setEditor(p)
+                            }
+                          >
+                            <span className="roster-number">{p.number}</span>
+                            <span className="roster-player-name">
+                              {p.name}
+                              {p.placement === "bench" ? " (fuera)" : ""}
+                            </span>
+                            <Pencil size={12} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                  {!data.players.some((p) => p.team === team) && (
+                    <p className="roster-empty">Sin jugadores</p>
+                  )}
                 </div>
-                <ul
-                  className="team-players"
-                  aria-label={`Jugadores del equipo ${team}`}
-                >
-                  {data.players
-                    .filter((p) => p.team === team)
-                    .map((p) => (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          className={`roster-player team-${team}`}
-                          aria-label={`Editar ${p.name}, número ${p.number}, equipo ${team}`}
-                          disabled={!board.connected}
-                          onClick={() => setEditor(p)}
-                        >
-                          <span className="roster-number">{p.number}</span>
-                          <span className="roster-player-name">
-                            {p.name}
-                            {p.placement === "bench" ? " (fuera)" : ""}
-                          </span>
-                          <Pencil size={12} aria-hidden="true" />
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-                {!data.players.some((p) => p.team === team) && (
-                  <p className="roster-empty">Sin jugadores</p>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </section>
+          <TacticsPanel
+            players={data.players}
+            tactics={tactics}
+            editor={tacticEditor}
+            playback={playback}
+            disabled={
+              !board.connected ||
+              board.busy ||
+              saving ||
+              palettePending ||
+              !!editor ||
+              renaming ||
+              confirmClear
+            }
+            canUndo={board.canUndo}
+            canRedo={board.canRedo}
+            onUndo={board.undo}
+            onRedo={board.redo}
+          />
           <section className="presence">
             <div className="section-heading">
               <span className="eyebrow">CONECTADOS</span>
@@ -555,7 +619,16 @@ export default function BoardPage({
                 fallback={<p className="status-page">Dibujando la cancha…</p>}
               >
                 <FootballField
-                  players={players}
+                  players={playback.players}
+                  routePlayers={players}
+                  routes={tactics.routes}
+                  preparing={tacticEditor.preparing}
+                  playbackLocked={playback.locked}
+                  selectedRoute={tacticEditor.selected?.id}
+                  draftPoints={tacticEditor.draft?.points}
+                  onRouteSelect={tacticEditor.select}
+                  onWaypoint={tacticEditor.add}
+                  onWaypointChange={tacticEditor.move}
                   playersPerTeam={data.board.players_per_team}
                   horizontal={horizontal}
                   locks={data.locks}

@@ -30,10 +30,11 @@ test("cancha completa y herramientas accesibles sin desplazar la página", async
     [320, 568],
   ]) {
     await page.setViewportSize({ width, height });
-    const canvas = page.locator(".field-wrap canvas").first();
     await expect
       .poll(async () => {
-        const box = await canvas.boundingBox();
+        const box = await page.locator(".field-wrap").boundingBox();
+        const topLeft = await pitchPoint(page, 0, 0);
+        const bottomRight = await pitchPoint(page, 1, 1);
         return (
           !!box &&
           box.width > 100 &&
@@ -41,7 +42,11 @@ test("cancha completa y herramientas accesibles sin desplazar la página", async
           box.x >= 0 &&
           box.y >= 0 &&
           box.x + box.width <= width + 1 &&
-          box.y + box.height <= height + 1
+          box.y + box.height <= height + 1 &&
+          topLeft.x >= box.x - 1 &&
+          topLeft.y >= box.y - 1 &&
+          bottomRight.x <= box.x + box.width + 1 &&
+          bottomRight.y <= box.y + box.height + 1
         );
       })
       .toBe(true);

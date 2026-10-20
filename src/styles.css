@@ -1521,7 +1521,7 @@ footer > span:last-child {
     flex-basis: 100%;
   }
 }
-/* Keep the desktop home in one viewport without scaling the headline or 3D pitch. */
+/* Fill the desktop viewport while allowing room for the rotating 3D pitch. */
 @media (min-width: 761px) and (min-height: 650px) {
   .home {
     min-height: 100svh;
@@ -1536,7 +1536,7 @@ footer > span:last-child {
     min-height: 0;
     min-height: calc(100svh - 56px);
     display: grid;
-    grid-template-rows: minmax(0, 1fr) 142px;
+    grid-template-rows: minmax(auto, 1fr) 142px;
   }
   .home .hero {
     width: 100%;
@@ -1584,7 +1584,7 @@ footer > span:last-child {
   }
   .home > main {
     min-height: calc(100svh - 48px);
-    grid-template-rows: minmax(0, 1fr) 112px;
+    grid-template-rows: minmax(auto, 1fr) 112px;
   }
   .home .how {
     padding-top: 10px;

@@ -1,5 +1,10 @@
 /* The existing hero box remains the layout anchor; only its model rotates. */
 .hero-art.pitch-scene {
+  width: 100%;
+  max-width: 390px;
+  justify-self: center;
+  /* Reserve room for the projected corners when the slab turns. */
+  margin-block: 96px;
   padding: 0;
   background: none;
   box-shadow: none;
@@ -10,6 +15,14 @@
   user-select: none;
   -webkit-user-select: none;
   outline: none;
+}
+@media (min-width: 761px) and (min-height: 650px) {
+  .pitch-scene .illustration-pitch {
+    height: clamp(280px, calc(100svh - 410px), 430px);
+  }
+  .pitch-scene .pitch-back .illustration-pitch {
+    height: auto;
+  }
 }
 .pitch-scene[data-dragging="true"] {
   cursor: grabbing;
@@ -90,5 +103,10 @@
 @media (max-width: 760px), (max-width: 1024px) and (pointer: coarse) {
   .hero-art.pitch-scene {
     touch-action: pan-y pinch-zoom;
+  }
+}
+@media (max-width: 760px) {
+  .hero-art.pitch-scene {
+    width: 88%;
   }
 }

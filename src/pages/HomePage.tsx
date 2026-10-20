@@ -48,9 +48,6 @@ export default function Home() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <span className="eyebrow">
-              <span className="little-line" /> LA TÁCTICA SE ARMA EN EQUIPO
-            </span>
             <h1>
               Mucho potrero.
               <br />

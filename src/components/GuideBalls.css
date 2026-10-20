@@ -52,7 +52,3 @@
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
-.pitch-scene[data-ball-impact="true"] .pitch-face {
-  outline: 3px solid var(--accent);
-  outline-offset: 5px;
-}

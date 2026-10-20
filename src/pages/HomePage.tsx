@@ -1,11 +1,11 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, Plus, Users, Radio, Move } from "lucide-react";
 import { configured, createBoard } from "../lib/api";
 import { SocialLinks, Logo, Nickname } from "../components/Identity";
 import LandingPitch from "../components/LandingPitch";
 import ThemeToggle from "../components/ThemeToggle";
-const GuideBalls = lazy(() => import("../components/GuideBalls"));
+import GuideBalls from "../components/GuideBalls";
 export default function Home() {
   const navigate = useNavigate(),
     [ask, setAsk] = useState(false),
@@ -142,15 +142,13 @@ export default function Home() {
         </section>
       </main>
       {guideClick > 0 && (
-        <Suspense fallback={null}>
-          <GuideBalls
-            launches={guideClick}
-            onArrival={(step) => {
-              setActiveStep(step);
-              setGuideArrival((count) => count + 1);
-            }}
-          />
-        </Suspense>
+        <GuideBalls
+          launches={guideClick}
+          onArrival={(step) => {
+            setActiveStep(step);
+            setGuideArrival((count) => count + 1);
+          }}
+        />
       )}
       {ask && (
         <Nickname

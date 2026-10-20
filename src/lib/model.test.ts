@@ -14,7 +14,7 @@ import {
 describe("coordenadas y validación", () => {
   it("limita el arrastre a los laterales visibles en ambas orientaciones", () => {
     for (const horizontal of [false, true]) {
-      const g = pitchGeometry(800, horizontal, horizontal ? 2 : 3);
+      const g = pitchGeometry(800, horizontal, horizontal ? 2 : 1);
       for (const y of [-1000, g.top, g.height + 1000]) {
         for (const x of [0, g.left + g.width / 2, 800]) {
           const p = constrainPlayerPosition({ x, y }, 800, horizontal);

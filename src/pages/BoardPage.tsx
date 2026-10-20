@@ -179,7 +179,7 @@ export default function BoardPage({
       y,
       canvas.getBoundingClientRect(),
       horizontal,
-      horizontal ? 2 : 3,
+      horizontal ? 2 : 1,
     );
   }
   async function quickAdd(addition: {
@@ -626,7 +626,9 @@ export default function BoardPage({
                   playbackLocked={playback.locked}
                   selectedRoute={tacticEditor.selected?.id}
                   draftPoints={tacticEditor.draft?.points}
-                  onRouteSelect={tacticEditor.select}
+                  onRouteSelect={tacticEditor.targetPlayer}
+                  onArrowSelect={tacticEditor.editArrow}
+                  onWaypointSave={tacticEditor.add}
                   onWaypoint={tacticEditor.add}
                   onWaypointChange={tacticEditor.move}
                   playersPerTeam={data.board.players_per_team}

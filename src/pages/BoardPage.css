@@ -479,9 +479,9 @@
 .board-app .field-wrap {
   height: 100%;
   display: block;
-  overflow: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
-  touch-action: pan-x pan-y;
+  touch-action: none;
 }
 .board-app .field-scroll-surface {
   min-width: 100%;

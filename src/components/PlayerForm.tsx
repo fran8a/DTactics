@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { validPlayer, type Player } from "../lib/model";
 import { useModalFocus } from "./useModalFocus";
@@ -18,6 +18,11 @@ export default function PlayerForm({
 }) {
   const [operationId] = useState(() => crypto.randomUUID());
   const modalRef = useModalFocus();
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    nameRef.current?.focus();
+    nameRef.current?.select();
+  }, []);
   const [name, setName] = useState(player?.name ?? ""),
     [number, setNumber] = useState(String(player?.number ?? 9)),
     [team, setTeam] = useState<"A" | "B">(player?.team ?? "A");
@@ -64,6 +69,7 @@ export default function PlayerForm({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (busy) return;
             if (!validPlayer(name, Number(number)) || number === "") {
               setError("Completá el nombre y un número del 0 al 99.");
               return;
@@ -79,7 +85,7 @@ export default function PlayerForm({
           <label>
             Nombre del jugador
             <input
-              autoFocus
+              ref={nameRef}
               onFocus={(e) => e.target.select()}
               required
               maxLength={40}

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Stage,
   Layer,
@@ -39,23 +39,25 @@ type Props = DragCallbacks & {
   selectedRoute?: string | null;
   draftPoints?: TacticalPoint[];
   onRouteSelect?: (player: Player) => void;
+  onArrowSelect?: (player: Player) => void;
+  onWaypointSave?: (point: TacticalPoint) => void;
   onWaypoint?: (point: TacticalPoint) => void;
   onWaypointChange?: (index: number, point: TacticalPoint) => void;
 };
 export default function FootballField(props: Props) {
   const box = useRef<HTMLDivElement>(null);
-  const pan = useRef<{
-    x: number;
-    y: number;
-    left: number;
-    top: number;
-  } | null>(null);
   const [width, setWidth] = useState(500);
+  const [availableHeight, setAvailableHeight] = useState(800);
   const [ball, setBall] = useState<TacticalPoint>({ x: 0.5, y: 0.5 });
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width: availableWidth, height: availableHeight } =
         entry.contentRect;
+      setAvailableHeight(availableHeight);
+      if (!props.horizontal) {
+        setWidth(Math.max(1, Math.floor(availableWidth)));
+        return;
+      }
       let low = 0,
         high = availableWidth;
       for (let i = 0; i < 24; i++) {
@@ -67,17 +69,7 @@ export default function FootballField(props: Props) {
           low = candidate;
         else high = candidate;
       }
-      if (props.horizontal) {
-        setWidth(Math.max(1, Math.floor(low)));
-        return;
-      }
-      // Keep the larger, scrollable margins in the vertical view.
-      const fitted = pitchGeometry(
-        Math.max(1, Math.floor(low)),
-        props.horizontal,
-      );
-      const apron = 72 + 60 * fitted.scale;
-      setWidth((props.horizontal ? 1050 : 680) * fitted.scale + apron * 2);
+      setWidth(Math.max(1, Math.floor(low)));
     });
     if (box.current) observer.observe(box.current);
     return () => observer.disconnect();
@@ -85,15 +77,10 @@ export default function FootballField(props: Props) {
   const geometry = pitchGeometry(
     width,
     props.horizontal,
-    props.horizontal ? 2 : 3,
+    props.horizontal ? 2 : 1,
+    availableHeight,
   );
   const { scale, height, apron } = geometry;
-  useLayoutEffect(() => {
-    const viewport = box.current;
-    if (!viewport) return;
-    viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
-    viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
-  }, [width, props.horizontal]);
   const line = "#c9e1cf";
   const screenPoint = (point: TacticalPoint) => {
     const p = toScreen(point.x, point.y, props.horizontal);
@@ -164,39 +151,11 @@ export default function FootballField(props: Props) {
                 return;
               }
             }
-            if (
-              props.horizontal ||
-              event.target !== event.target.getStage() ||
-              !box.current
-            )
-              return;
-            const viewport = box.current;
-            pan.current = {
-              x: event.evt.clientX,
-              y: event.evt.clientY,
-              left: viewport.scrollLeft,
-              top: viewport.scrollTop,
-            };
-            const target = event.evt.target;
-            if (target instanceof Element)
-              target.setPointerCapture(event.evt.pointerId);
-          }}
-          onPointerMove={(event) => {
-            const start = pan.current;
-            if (props.horizontal || !start || !box.current) return;
-            box.current.scrollLeft = start.left + start.x - event.evt.clientX;
-            box.current.scrollTop = start.top + start.y - event.evt.clientY;
-          }}
-          onPointerUp={() => {
-            pan.current = null;
-          }}
-          onPointerCancel={() => {
-            pan.current = null;
           }}
         >
           <Layer listening={false}>
             <Group
-              x={apron}
+              x={geometry.left - 30 * scale}
               y={apron + (props.horizontal ? 680 * scale : 0)}
               rotation={props.horizontal ? -90 : 0}
               scaleX={scale}
@@ -310,13 +269,19 @@ export default function FootballField(props: Props) {
                 return (
                   <Group key={player.id}>
                     <Arrow
-                      listening={false}
-                      points={[{ x: player.x, y: player.y }, ...points].flatMap(
-                        (p) => {
-                          const s = screenPoint(p);
-                          return [s.x, s.y];
-                        },
-                      )}
+                      listening={props.enabled && !props.playbackLocked}
+                      hitStrokeWidth={18}
+                      onPointerDown={(event) => {
+                        event.cancelBubble = true;
+                        props.onArrowSelect?.(player);
+                      }}
+                      points={[
+                        { x: player.x, y: player.y },
+                        ...points.slice(-1),
+                      ].flatMap((p) => {
+                        const s = screenPoint(p);
+                        return [s.x, s.y];
+                      })}
                       stroke={color}
                       fill={color}
                       strokeWidth={selected ? 3.5 : 2.5}
@@ -328,7 +293,7 @@ export default function FootballField(props: Props) {
                     />
                     {selected &&
                       !props.playbackLocked &&
-                      points.map((p, index) => {
+                      points.slice(-1).map((p, index) => {
                         const s = screenPoint(p);
                         return (
                           <Circle
@@ -367,8 +332,7 @@ export default function FootballField(props: Props) {
                               )
                             }
                             onDragEnd={(e) =>
-                              props.onWaypointChange?.(
-                                index,
+                              props.onWaypointSave?.(
                                 canonicalPoint(e.target.x(), e.target.y()),
                               )
                             }
@@ -470,7 +434,8 @@ function Token({
   const geometry = pitchGeometry(
     width,
     props.horizontal,
-    props.horizontal ? 2 : 3,
+    props.horizontal ? 2 : 1,
+    height,
   );
   const { left, top, width: w, heightInside: h } = geometry;
   const fieldPosition = toScreen(player.x, player.y, props.horizontal);
@@ -492,7 +457,7 @@ function Token({
   const rawDisplay = { x: left + position.x * w, y: top + position.y * h };
   const display =
     player.placement === "bench"
-      ? constrainPlayerPosition(rawDisplay, width, props.horizontal)
+      ? constrainPlayerPosition(rawDisplay, width, props.horizontal, height)
       : rawDisplay;
   const drag = usePlayerDrag(node, {
     player,
@@ -500,6 +465,10 @@ function Token({
     height,
     horizontal: props.horizontal,
     position: display,
+    canEnterField:
+      props.players.filter(
+        (p) => p.team === player.team && p.placement === "field",
+      ).length < props.playersPerTeam,
     enabled: props.enabled && !props.preparing && !props.playbackLocked,
     lock,
     begin: props.begin,

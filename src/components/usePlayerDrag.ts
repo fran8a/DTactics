@@ -33,6 +33,7 @@ type Options = DragCallbacks & {
   height: number;
   horizontal: boolean;
   position: Point;
+  canEnterField: boolean;
   enabled: boolean;
   lock?: Lease;
 };
@@ -55,7 +56,8 @@ function point(node: Konva.Group, options: Options): Point {
   const g = pitchGeometry(
     options.width,
     options.horizontal,
-    options.horizontal ? 2 : 3,
+    options.horizontal ? 2 : 1,
+    options.height,
   );
   const x = (node.x() - g.left) / g.width;
   const y = (node.y() - g.top) / g.heightInside;
@@ -131,9 +133,17 @@ export function usePlayerDrag(
       try {
         if (await g.permission) {
           const current = latest.current;
-          if (g.cancelled || !mounted.current || !target)
+          if (
+            g.cancelled ||
+            !mounted.current ||
+            !target ||
+            (current.player.placement === "bench" &&
+              !current.canEnterField &&
+              !outsideField(target))
+          ) {
+            node.current?.position(current.position);
             await current.end(current.player.id);
-          else if (outsideField(target))
+          } else if (outsideField(target))
             await current.end(
               current.player.id,
               current.player.x,
@@ -165,6 +175,7 @@ export function usePlayerDrag(
       lastDrag.current = performance.now();
       const current = latest.current;
       const rect = n.getStage()!.container().getBoundingClientRect();
+      const previousPosition = n.position();
       n.position(
         constrainPlayerPosition(
           {
@@ -173,8 +184,16 @@ export function usePlayerDrag(
           },
           current.width,
           current.horizontal,
+          current.height,
         ),
       );
+      if (
+        current.player.placement === "bench" &&
+        !current.canEnterField &&
+        !outsideField(point(n, current))
+      ) {
+        n.position(previousPosition);
+      }
       g.local = n.position();
       color(outsideField(point(n, current)));
       n.getStage()!.container().style.cursor = "grabbing";

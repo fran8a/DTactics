@@ -5,7 +5,6 @@ import type {
   Tactics,
   TacticsConfig,
 } from "../lib/model";
-import { MAX_ROUTE_POINTS } from "../lib/tactics";
 
 export function useTacticsEditor(
   formation: string | undefined,
@@ -37,25 +36,29 @@ export function useTacticsEditor(
     setDraft((old) => {
       if (!old || JSON.stringify(old.points) !== JSON.stringify(old.basePoints))
         return old;
-      const points = (tactics.routes[old.playerId] ?? []).map((p) => ({
-        ...p,
-      }));
+      const points = (tactics.routes[old.playerId] ?? [])
+        .slice(-1)
+        .map((p) => ({
+          ...p,
+        }));
       return { ...old, points, basePoints: points, version: tactics.version };
     });
   }, [tactics.version]);
-  function load(player: Player) {
+  function load(player: Player, version = tactics.version) {
     if (player.placement !== "field") return;
-    const points = (tactics.routes[player.id] ?? []).map((p) => ({ ...p }));
+    const points = (tactics.routes[player.id] ?? [])
+      .slice(-1)
+      .map((p) => ({ ...p }));
     setDraft({
       playerId: player.id,
       points,
       basePoints: points,
-      version: tactics.version,
+      version,
     });
     setError("");
   }
   function select(player: Player) {
-    if (draft?.playerId === player.id) return;
+    if (busy || draft?.playerId === player.id) return;
     if (
       draft &&
       JSON.stringify(draft.points) !== JSON.stringify(draft.basePoints)
@@ -65,13 +68,31 @@ export function useTacticsEditor(
     }
     load(player);
   }
-  function add(point: TacticalPoint) {
+  async function add(point: TacticalPoint, nextPlayer?: Player) {
     if (!draft || busy) return;
-    if (draft.points.length >= MAX_ROUTE_POINTS) {
-      setError("Máximo: 24 puntos por recorrido.");
-      return;
+    const points = [point];
+    setDraft({ ...draft, points });
+    try {
+      await run(async () => {
+        await save(
+          {
+            routes: { ...tactics.routes, [draft.playerId]: points },
+            duration_ms: tactics.duration_ms,
+          },
+          draft.version,
+        );
+        if (nextPlayer) load(nextPlayer, draft.version + 1);
+        else setDraft(null);
+      });
+    } catch {
+      // Keep the draft available for retry when saving fails.
     }
-    setDraft({ ...draft, points: [...draft.points, point] });
+  }
+  function targetPlayer(player: Player) {
+    if (busy || player.placement !== "field") return;
+    if (!draft) load(player);
+    else if (draft.playerId !== player.id)
+      void add({ x: player.x, y: player.y }, player);
   }
   function move(index: number, point: TacticalPoint) {
     if (!draft || busy) return;
@@ -140,8 +161,14 @@ export function useTacticsEditor(
     busy,
     dirty,
     select,
+    targetPlayer,
     add,
     move,
+    editArrow: (player: Player) => {
+      if (busy) return;
+      setPreparing(true);
+      load(player);
+    },
     saveDraft,
     remove,
     toggle: () => {
@@ -154,10 +181,6 @@ export function useTacticsEditor(
       setDraft(null);
       setError("");
     },
-    undoPoint: () =>
-      setDraft((old) =>
-        old ? { ...old, points: old.points.slice(0, -1) } : old,
-      ),
     reload: () => {
       if (selected) load(selected);
     },

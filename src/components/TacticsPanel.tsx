@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Save,
-  CornerUpLeft,
   Pause,
   Play,
   RotateCcw,
@@ -167,19 +166,6 @@ export default function TacticsPanel({
               ))}
           </select>
           <div className="tactics-edit-actions">
-            <span className="tactics-point-count">
-              {editor.draft?.points.length ?? 0}/24 puntos
-            </span>
-            <button
-              type="button"
-              className="tactics-icon"
-              aria-label="Quitar último punto"
-              title="Quitar último punto"
-              disabled={blocked || !editor.draft?.points.length}
-              onClick={editor.undoPoint}
-            >
-              <CornerUpLeft size={14} />
-            </button>
             <button
               type="button"
               className="tactics-icon"
@@ -205,21 +191,23 @@ export default function TacticsPanel({
             >
               <Trash2 size={14} />
             </button>
-            <button
-              type="button"
-              className="tactics-save"
-              aria-label="Guardar recorrido"
-              title="Guardar recorrido"
-              disabled={blocked || !editor.selected || !editor.dirty}
-              onClick={() => void editor.saveDraft().catch(() => {})}
-            >
-              <Save size={14} />
-            </button>
+            {editor.dirty && (
+              <button
+                type="button"
+                className="tactics-save"
+                aria-label="Guardar recorrido"
+                title="Guardar recorrido"
+                disabled={blocked || !editor.selected || !editor.dirty}
+                onClick={() => void editor.saveDraft().catch(() => {})}
+              >
+                <Save size={14} />
+              </button>
+            )}
           </div>
           <p className="tactics-hint">
             {editor.dirty
               ? "Cambios sin guardar. Guardá antes de cambiar."
-              : "Tocá la cancha. Arrastrá los puntos para ajustar."}
+              : "Tocá la cancha para guardar la flecha. Tocá otro jugador para continuar con él."}
           </p>
         </div>
       )}

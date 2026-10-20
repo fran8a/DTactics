@@ -1,8 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { fitPitch } from "./pitchLayout";
-import { fieldDrop, pitchGeometry, toScreen } from "./model";
+import {
+  constrainPlayerPosition,
+  fieldDrop,
+  pitchGeometry,
+  toScreen,
+} from "./model";
 
 describe("responsive pitch geometry", () => {
+  it("keeps the vertical pitch fixed while opening the full width to substitutes", () => {
+    const narrow = pitchGeometry(900, false, 1, 850);
+    const wide = pitchGeometry(1600, false, 1, 850);
+    expect(wide.scale).toBeCloseTo(narrow.scale);
+    expect(wide.height).toBeLessThanOrEqual(850);
+    expect(wide.left - narrow.left).toBeCloseTo(350);
+    const y = wide.top + wide.heightInside / 2;
+    expect(constrainPlayerPosition({ x: 30, y }, 1600, false, 850).x).toBe(30);
+    expect(constrainPlayerPosition({ x: 1570, y }, 1600, false, 850).x).toBe(
+      1570,
+    );
+    expect(
+      fieldDrop(
+        wide.left + wide.width / 2,
+        y,
+        { left: 0, top: 0, width: 1600, height: wide.height },
+        false,
+      ),
+    ).toEqual({ x: 0.5, y: 0.5 });
+  });
   it("triples outside margins without shrinking the pitch and keeps drops aligned", () => {
     for (const horizontal of [false, true]) {
       const original = pitchGeometry(500, horizontal);

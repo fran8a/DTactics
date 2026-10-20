@@ -73,7 +73,10 @@ export function useTacticalPlayback(
       for (const player of players) {
         const route = tactics.routes[player.id];
         if (player.placement === "field" && route?.length)
-          tracks[player.id] = buildTrack({ x: player.x, y: player.y }, route);
+          tracks[player.id] = buildTrack(
+            { x: player.x, y: player.y },
+            route.slice(-1),
+          );
       }
       if (!Object.keys(tracks).length) return;
       capture.current = {

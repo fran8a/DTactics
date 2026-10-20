@@ -90,7 +90,12 @@ export function fieldDrop(
   horizontal: boolean,
   marginMultiplier = 1,
 ) {
-  const pitch = pitchGeometry(rect.width, horizontal, marginMultiplier);
+  const pitch = pitchGeometry(
+    rect.width,
+    horizontal,
+    marginMultiplier,
+    rect.height,
+  );
   if (
     rect.width <= 44 ||
     rect.height <= 44 ||
@@ -110,18 +115,27 @@ export function pitchGeometry(
   width: number,
   horizontal: boolean,
   marginMultiplier = 1,
+  availableHeight = Infinity,
 ) {
   const base = horizontal ? 1050 : 680;
-  const scale =
-    Math.max(1, width - 48 * marginMultiplier) /
-    (base + 60 * (marginMultiplier - 1));
+  const scale = Math.max(
+    0.001,
+    Math.min(
+      Math.max(1, width - 48 * marginMultiplier) /
+        (base + 60 * (marginMultiplier - 1)),
+      horizontal
+        ? Infinity
+        : (availableHeight - 48 * marginMultiplier) /
+            (1050 + 60 * (marginMultiplier - 1)),
+    ),
+  );
   const apron = 24 * marginMultiplier + 30 * scale * (marginMultiplier - 1);
   const height = (horizontal ? 680 : 1050) * scale + apron * 2;
   return {
     apron,
     scale,
     height,
-    left: apron + 30 * scale,
+    left: (width - base * scale) / 2 + 30 * scale,
     top: apron + 30 * scale,
     width: (horizontal ? 990 : 620) * scale,
     heightInside: (horizontal ? 620 : 990) * scale,
@@ -135,8 +149,14 @@ export function constrainPlayerPosition(
   position: { x: number; y: number },
   width: number,
   horizontal: boolean,
+  availableHeight = Infinity,
 ) {
-  const g = pitchGeometry(width, horizontal, horizontal ? 2 : 3);
+  const g = pitchGeometry(
+    width,
+    horizontal,
+    horizontal ? 2 : 1,
+    availableHeight,
+  );
   const insetX = Math.min(19, g.width / 2);
   const insetY = Math.min(19, g.heightInside / 2);
   const canvasInsetX = Math.min(19, width / 2);

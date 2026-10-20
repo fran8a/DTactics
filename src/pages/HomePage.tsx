@@ -157,6 +157,7 @@ export default function Home() {
       )}
       {ask && (
         <Nickname
+          onClose={() => setAsk(false)}
           onDone={() => {
             setAsk(false);
             void create();

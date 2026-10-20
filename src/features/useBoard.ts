@@ -120,16 +120,19 @@ export function useBoard(
       if (!online.current)
         throw new Error("Sin conexión. Esperá a que se recupere para guardar.");
       const result = await run(() =>
-        rpc<Snapshot>("change_player_v2", {
-          p_board: id,
-          p_formation: active.current,
-          p_action: action,
-          p_id: pid,
-          p_data: values,
-          p_version: version ?? null,
-          p_lease: lease ?? null,
-          p_operation: operationId ?? crypto.randomUUID(),
-        }),
+        rpc<Snapshot>(
+          pid === active.current ? "change_ball" : "change_player_v2",
+          {
+            p_board: id,
+            p_formation: active.current,
+            p_action: action,
+            p_id: pid,
+            p_data: values,
+            p_version: version ?? null,
+            p_lease: lease ?? null,
+            p_operation: operationId ?? crypto.randomUUID(),
+          },
+        ),
       );
       apply(result);
       record(result);
@@ -209,7 +212,7 @@ export function useBoard(
       setDragging(false);
       if (d) {
         clearInterval(d.timer);
-        void rpc("change_player_v2", {
+        void rpc(d.id === d.formation ? "change_ball" : "change_player_v2", {
           p_board: id,
           p_formation: d.formation,
           p_action: "release",
@@ -489,7 +492,7 @@ export function useBoard(
     try {
       await change("acquire", pid, {}, undefined, d.lease);
       if (drag.current !== d || !online.current) {
-        await rpc("change_player_v2", {
+        await rpc(pid === d.formation ? "change_ball" : "change_player_v2", {
           p_board: id,
           p_formation: d.formation,
           p_action: "release",
@@ -721,7 +724,9 @@ export function useBoard(
         rpc<Snapshot>(
           op.kind === "tactics"
             ? "reverse_tactics_operation"
-            : "reverse_operation",
+            : op.kind === "ball"
+              ? "reverse_ball_operation"
+              : "reverse_operation",
           {
             p_board: id,
             p_formation: formation,

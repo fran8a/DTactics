@@ -646,6 +646,16 @@ export default function BoardPage({
                 fallback={<p className="status-page">Dibujando la cancha…</p>}
               >
                 <FootballField
+                  key={data.formation.id}
+                  ball={{
+                    ...(data.ball ?? {
+                      id: data.formation.id,
+                      x: 0.5,
+                      y: 0.5,
+                      version: 1,
+                    }),
+                    ...board.previews[data.formation.id],
+                  }}
                   players={playback.players}
                   routePlayers={players}
                   routes={tactics.routes}

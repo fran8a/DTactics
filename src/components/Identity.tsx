@@ -51,11 +51,22 @@ export function Logo() {
     </Link>
   );
 }
-export function Nickname({ onDone }: { onDone: (name: string) => void }) {
+export function Nickname({
+  onDone,
+  onClose,
+}: {
+  onDone: (name: string) => void;
+  onClose: () => void;
+}) {
   const modalRef = useModalFocus();
   const [name, setName] = useState("");
   return (
-    <div className="overlay">
+    <div
+      className="overlay"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <section
         ref={modalRef}
         className="modal"

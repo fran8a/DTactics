@@ -23,9 +23,11 @@ import {
   type Lease,
   type Participant,
   type TacticalPoint,
+  type Ball,
 } from "../lib/model";
 type Props = DragCallbacks & {
   players: Player[];
+  ball: Ball;
   playersPerTeam: 7 | 11;
   horizontal: boolean;
   locks: Lease[];
@@ -50,7 +52,7 @@ export default function FootballField(props: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(500);
   const [availableHeight, setAvailableHeight] = useState(800);
-  const [ball, setBall] = useState<TacticalPoint>({ x: 0.5, y: 0.5 });
+  const ballNode = useRef<Konva.Group>(null);
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width: availableWidth, height: availableHeight } =
@@ -117,7 +119,26 @@ export default function FootballField(props: Props) {
       Math.min(geometry.top + geometry.heightInside - ballInset, position.y),
     ),
   });
-  const ballDisplay = constrainBall(screenPoint(ball));
+  const ballDisplay = constrainBall(screenPoint(props.ball));
+  const ballLock = props.locks.find(
+    (lock) =>
+      lock.player_id === props.ball.id &&
+      Date.parse(lock.expires_at) > props.now,
+  );
+  const ballDrag = usePlayerDrag(ballNode, {
+    player: { ...props.ball, placement: "field" },
+    width,
+    height,
+    horizontal: props.horizontal,
+    position: ballDisplay,
+    canEnterField: true,
+    enabled: props.enabled && !props.preparing && !props.playbackLocked,
+    lock: ballLock,
+    constrainPosition: constrainBall,
+    begin: props.begin,
+    moving: props.moving,
+    end: props.end,
+  });
   return (
     <div
       className="field-wrap"
@@ -352,25 +373,24 @@ export default function FootballField(props: Props) {
           </Layer>
           <Layer>
             <Group
+              ref={ballNode}
               name="ball"
               listening={!props.preparing}
               x={ballDisplay.x}
               y={ballDisplay.y}
-              draggable={props.enabled && !props.preparing}
-              dragBoundFunc={constrainBall}
+              draggable={false}
               onPointerDown={(event) => {
                 event.cancelBubble = true;
-              }}
-              onDragEnd={(event) => {
-                const position = constrainBall(event.target.position());
-                event.target.position(position);
-                setBall(canonicalPoint(position.x, position.y));
+                ballDrag.onPointerDown(event);
               }}
               onMouseEnter={(event) => {
                 const stage = event.target.getStage();
                 if (stage)
-                  stage.container().style.cursor =
-                    props.enabled && !props.preparing ? "grab" : "default";
+                  stage.container().style.cursor = ballLock
+                    ? "not-allowed"
+                    : props.enabled && !props.preparing && !props.playbackLocked
+                      ? "grab"
+                      : "default";
               }}
               onMouseLeave={(event) => {
                 const stage = event.target.getStage();

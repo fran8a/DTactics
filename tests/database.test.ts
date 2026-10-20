@@ -154,6 +154,107 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
   afterAll(async () => {
     await db.close();
   });
+  it("sincroniza una pelota por formación con permisos, leases e historial", async () => {
+    const c = await extended();
+    const lease = randomUUID();
+    const operation = randomUUID();
+    const ball = (
+      actor: string,
+      action: string,
+      data: unknown = {},
+      permit = lease,
+      op = randomUUID(),
+    ) =>
+      user(actor, () =>
+        call<any>("change_ball", [
+          c.board,
+          c.formation,
+          action,
+          c.formation,
+          JSON.stringify(data),
+          null,
+          permit,
+          op,
+        ]),
+      );
+    const get = (actor = b) =>
+      user(actor, () =>
+        call<any>("formation_snapshot", [c.board, c.formation]),
+      );
+    let s = await get();
+    expect(s.ball).toEqual({ id: c.formation, x: 0.5, y: 0.5, version: 1 });
+    expect(s.players).toEqual([]);
+    await expect(ball(intruder, "acquire")).rejects.toThrow(/acceso/);
+    await expect(ball(a, "move", { x: 0.2, y: 0.3 })).rejects.toThrow(
+      /permiso/,
+    );
+    await ball(a, "acquire");
+    expect((await get()).locks).toMatchObject([
+      { player_id: c.formation, lease_id: lease, user_id: a },
+    ]);
+    await expect(ball(b, "acquire", {}, randomUUID())).rejects.toThrow(
+      /moviendo/,
+    );
+    await expect(ball(a, "acquire", {}, randomUUID())).rejects.toThrow(
+      /moviendo/,
+    );
+    await ball(a, "renew");
+    await ball(b, "release");
+    expect((await get()).locks).toHaveLength(1);
+    await expect(ball(a, "move", { x: 1.2, y: 0.3 })).rejects.toThrow(/cancha/);
+    await expect(ball(a, "move", { x: null, y: 0.3 })).rejects.toThrow(
+      /válida/,
+    );
+    s = await ball(a, "move", { x: 0.2, y: 0.3 }, lease, operation);
+    expect(s.operation.kind).toBe("ball");
+    expect((await get()).ball).toMatchObject({ x: 0.2, y: 0.3, version: 2 });
+    expect((await get()).locks).toEqual([]);
+    await ball(a, "move", { x: 0.2, y: 0.3 }, lease, operation);
+    expect((await get()).ball.version).toBe(2);
+    const reverse = (actor: string, direction: string) =>
+      user(actor, () =>
+        call<any>("reverse_ball_operation", [
+          c.board,
+          c.formation,
+          operation,
+          direction,
+        ]),
+      );
+    await expect(reverse(b, "undo")).rejects.toThrow(/historial/);
+    await reverse(a, "undo");
+    expect((await get()).ball).toMatchObject({ x: 0.5, y: 0.5 });
+    await reverse(a, "redo");
+    expect((await get()).ball).toMatchObject({ x: 0.2, y: 0.3 });
+    const copy = randomUUID();
+    s = await user(a, () =>
+      call<any>("manage_formation", [
+        c.board,
+        "duplicate",
+        copy,
+        "Copia",
+        c.formation,
+        null,
+      ]),
+    );
+    expect(s.ball).toMatchObject({ id: copy, x: 0.2, y: 0.3 });
+    expect(s.players).toEqual([]);
+    await ball(b, "acquire");
+    await db.query(
+      "update private.ball_state set expires_at=now()-interval '1 second' where formation_id=$1",
+      [c.formation],
+    );
+    await expect(ball(b, "move", { x: 0.8, y: 0.7 })).rejects.toThrow(/venció/);
+    await ball(a, "acquire");
+    await ball(a, "release");
+    expect((await get()).ball).toMatchObject({ x: 0.2, y: 0.3 });
+    await ball(b, "acquire");
+    await ball(b, "move", { x: 0.8, y: 0.7 });
+    await expect(reverse(a, "undo")).rejects.toThrow(/posteriores/);
+    expect(
+      (await user(a, () => call<any>("formation_snapshot", [c.board, copy])))
+        .ball,
+    ).toMatchObject({ x: 0.2, y: 0.3 });
+  });
   it("valida recorridos de titulares, versiones, permisos y reintentos tácticos", async () => {
     const c = await extended();
     const player = randomUUID();

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Link,
   useLocation,
+  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -11,6 +12,7 @@ import { Logo, Nickname } from "../components/Identity";
 import BoardPage from "./BoardPage";
 import ThemeToggle from "../components/ThemeToggle";
 export default function BoardGate() {
+  const navigate = useNavigate();
   const { id = "", code = "" } = useParams(),
     [params] = useSearchParams(),
     token = params.get("access") ?? "";
@@ -91,7 +93,8 @@ export default function BoardGate() {
         <p>Validando el enlace…</p>
       </div>
     );
-  if (!name) return <Nickname onDone={setName} />;
+  if (!name)
+    return <Nickname onDone={setName} onClose={() => navigate("/")} />;
   return (
     <BoardPage
       key={resolved.id}

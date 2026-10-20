@@ -34,17 +34,18 @@ export type Formation = {
   version: number;
 };
 export type HistoryOperation = {
-  kind?: "tactics";
+  kind?: "tactics" | "ball";
   id: string;
   formation_id: string;
   player_id: string;
   type: string;
   actor_id: string;
-  before_data: Player | TacticsConfig | null;
-  after_data: Player | TacticsConfig | null;
+  before_data: Player | TacticsConfig | TacticalPoint | null;
+  after_data: Player | TacticsConfig | TacticalPoint | null;
   created_at: string;
 };
 export type TacticalPoint = { x: number; y: number };
+export type Ball = TacticalPoint & { id: string; version: number };
 export type TacticsConfig = {
   routes: Record<string, TacticalPoint[]>;
   duration_ms: number;
@@ -58,6 +59,7 @@ export type Snapshot = {
   locks: Lease[];
   operation?: HistoryOperation;
   tactics?: Tactics;
+  ball?: Ball;
 };
 export type Participant = {
   user_id: string;
@@ -225,6 +227,9 @@ export function acceptSnapshot(current: Snapshot | null, incoming: Snapshot) {
     : current;
 }
 export const events = [
+  "ball_updated",
+  "ball_drag_started",
+  "ball_drag_ended",
   "tactics_updated",
   "player_added",
   "player_updated",

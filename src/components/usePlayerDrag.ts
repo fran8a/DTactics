@@ -28,7 +28,7 @@ export type DragCallbacks = {
   ) => Promise<void>;
 };
 type Options = DragCallbacks & {
-  player: Player;
+  player: Pick<Player, "id" | "x" | "y" | "placement">;
   width: number;
   height: number;
   horizontal: boolean;
@@ -36,6 +36,7 @@ type Options = DragCallbacks & {
   canEnterField: boolean;
   enabled: boolean;
   lock?: Lease;
+  constrainPosition?: (position: Point) => Point;
 };
 type Gesture = {
   pointerId: number;
@@ -177,15 +178,19 @@ export function usePlayerDrag(
       const rect = n.getStage()!.container().getBoundingClientRect();
       const previousPosition = n.position();
       n.position(
-        constrainPlayerPosition(
-          {
-            x: g.origin.x + event.clientX - g.start.x + g.rect.left - rect.left,
-            y: g.origin.y + event.clientY - g.start.y + g.rect.top - rect.top,
-          },
-          current.width,
-          current.horizontal,
-          current.height,
-        ),
+        (
+          current.constrainPosition ??
+          ((position: Point) =>
+            constrainPlayerPosition(
+              position,
+              current.width,
+              current.horizontal,
+              current.height,
+            ))
+        )({
+          x: g.origin.x + event.clientX - g.start.x + g.rect.left - rect.left,
+          y: g.origin.y + event.clientY - g.start.y + g.rect.top - rect.top,
+        }),
       );
       if (
         current.player.placement === "bench" &&

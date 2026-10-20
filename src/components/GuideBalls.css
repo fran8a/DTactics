@@ -1,0 +1,58 @@
+.guide-balls {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+.physics-ball {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: #fbfbf1;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  box-shadow: 2px 5px 9px #142c2440;
+  will-change: transform;
+}
+.physics-ball svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.physics-ball:not([data-phase]) {
+  visibility: hidden;
+}
+.physics-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at 30% 25%,
+    #ffffff80,
+    transparent 40%,
+    #102b2450 85%,
+    #102b2470
+  );
+  box-shadow: inset 0 0 0 1px #183b2c30;
+  pointer-events: none;
+}
+.physics-ball[data-grabbed="true"] {
+  cursor: grabbing;
+}
+.physics-ball:focus-visible {
+  outline: 3px solid #e98c50;
+  outline-offset: 3px;
+}
+.pitch-scene[data-ball-impact="true"] .pitch-face {
+  outline: 3px solid #e98c50;
+  outline-offset: 5px;
+}

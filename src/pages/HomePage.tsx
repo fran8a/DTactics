@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, Plus, Users, Radio, Move } from "lucide-react";
 import { configured, createBoard } from "../lib/api";
-import { Logo, Nickname } from "../components/Identity";
+import { SocialLinks, Logo, Nickname } from "../components/Identity";
 import LandingPitch from "../components/LandingPitch";
+const GuideBalls = lazy(() => import("../components/GuideBalls"));
 export default function Home() {
   const navigate = useNavigate(),
     [ask, setAsk] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [guideClick, setGuideClick] = useState(0);
+  const [guideArrival, setGuideArrival] = useState(0);
+  const [activeStep, setActiveStep] = useState(-1);
   async function create() {
     setBusy(true);
     setError("");
@@ -28,9 +32,14 @@ export default function Home() {
         <span className="header-tag">
           <i className="dot" /> FÚTBOL, ENTRE TODOS.
         </span>
-        <a href="#como-funciona" className="nav-link">
+        <button
+          type="button"
+          className="nav-link"
+          aria-controls="como-funciona"
+          onClick={() => setGuideClick((click) => click + 1)}
+        >
           Cómo se juega <ArrowUpRight size={16} />
-        </a>
+        </button>
       </header>
       <main>
         <section className="hero">
@@ -45,11 +54,6 @@ export default function Home() {
               <br />
               <em>estrategia.</em>
             </h1>
-            <p className="slogan">
-              Donde se arman las mejores jugadas
-              <br />
-              (y las peores también).
-            </p>
             <p className="description">
               Armá tu equipo, mové los jugadores y compartí la pizarra con los
               pibes. Todos editan en tiempo real.
@@ -68,6 +72,9 @@ export default function Home() {
             </button>
             <div className="no-registration">
               <Radio size={15} /> Gratis. Sin registro. Sin vueltas.
+            </div>
+            <div className="hero-social-links">
+              <SocialLinks />
             </div>
             {!configured && (
               <p className="config-note">
@@ -88,6 +95,13 @@ export default function Home() {
         </section>
         <section className="how" id="como-funciona">
           <div className="how-intro">
+            <span
+              className="guide-announcement"
+              role="status"
+              aria-live="polite"
+            >
+              {activeStep >= 0 ? `Paso ${activeStep + 1} de 3` : ""}
+            </span>
             <span className="eyebrow">DEL GRUPO A LA CANCHA</span>
             <h2>Tres pases y estamos.</h2>
           </div>
@@ -110,8 +124,12 @@ export default function Home() {
               title: "Armá la jugada",
               text: "Agreguen jugadores y muevan el equipo juntos, en tiempo real.",
             },
-          ].map((item) => (
-            <article className="step" key={item.n}>
+          ].map((item, index) => (
+            <article
+              className={`step ${activeStep === index ? "step-active" : ""}`}
+              key={activeStep === index ? `${item.n}-${guideArrival}` : item.n}
+              aria-current={activeStep === index ? "step" : undefined}
+            >
               <div className="step-top">
                 <item.icon size={22} />
                 <span>{item.n}</span>
@@ -122,11 +140,17 @@ export default function Home() {
           ))}
         </section>
       </main>
-      <footer>
-        <Logo />
-        <span>Hecho para discutir el 4-3-3 con fundamento.</span>
-        <span>EL FÚTBOL SE COMPARTE. ↗</span>
-      </footer>
+      {guideClick > 0 && (
+        <Suspense fallback={null}>
+          <GuideBalls
+            launches={guideClick}
+            onArrival={(step) => {
+              setActiveStep(step);
+              setGuideArrival((count) => count + 1);
+            }}
+          />
+        </Suspense>
+      )}
       {ask && (
         <Nickname
           onDone={() => {

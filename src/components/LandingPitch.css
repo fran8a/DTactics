@@ -23,6 +23,12 @@
   transform-style: preserve-3d;
   will-change: transform;
 }
+.pitch-collision-probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
 .pitch-face {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;

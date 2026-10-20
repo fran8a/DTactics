@@ -10,6 +10,24 @@ import {
 } from "../lib/rotation";
 import "./LandingPitch.css";
 
+// Browser-projected samples of both rounded faces, including the slab's thickness.
+const collisionProbes = [-6, 6].flatMap((z) =>
+  [0, 1, 2, 3].flatMap((corner) =>
+    [0, 1, 2, 3, 4].map((sample) => {
+      const angle = ((corner * 90 + sample * 22.5) * Math.PI) / 180;
+      const right = corner === 0 || corner === 3;
+      const bottom = corner < 2;
+      const dx = Math.cos(angle) * 14;
+      const dy = Math.sin(angle) * 14;
+      return {
+        left: right ? `calc(100% - ${14 - dx}px)` : `${14 + dx}px`,
+        top: bottom ? `calc(100% - ${14 - dy}px)` : `${14 + dy}px`,
+        transform: `translateZ(${z}px)`,
+      };
+    }),
+  ),
+);
+
 function Surface({ note = false }: { note?: boolean }) {
   return (
     <div className="illustration-pitch">
@@ -239,6 +257,14 @@ function LandingPitch() {
         ref={solid}
         style={{ transform: cssRotation(initialRotation) }}
       >
+        {collisionProbes.map((style, index) => (
+          <span
+            key={index}
+            className="pitch-collision-probe"
+            style={style}
+            aria-hidden="true"
+          />
+        ))}
         <div
           className="pitch-face pitch-front"
           data-normal="0,0,1"

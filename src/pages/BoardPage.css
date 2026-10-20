@@ -11,6 +11,9 @@
   gap: 20px;
   flex-wrap: nowrap;
 }
+.board-app .board-header-actions {
+  gap: 8px;
+}
 .board-app .board-header .logo {
   font-size: 28px;
 }
@@ -21,7 +24,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  color: #64745f;
+  color: var(--text-secondary);
 }
 .board-app .board-layout {
   flex: 1;
@@ -36,8 +39,8 @@
   min-width: 0;
   overflow: hidden;
   border: 0;
-  border-right: 1px solid #d6ddcf;
-  background: #fafaf3;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
 }
@@ -45,7 +48,7 @@
   margin: 0;
   padding: 12px 16px;
   border: 0;
-  border-bottom: 1px solid #e2e6da;
+  border-bottom: 1px solid var(--border-subtle);
   min-width: 0;
 }
 .board-app .sidebar .section-heading {
@@ -60,7 +63,7 @@
   margin: 0;
   padding: 0 0 0 16px;
   border: 0;
-  border-left: 1px solid #d8decf;
+  border-left: 1px solid var(--border-subtle);
 }
 .board-app .board-header .board-title > button {
   justify-content: flex-start;
@@ -87,7 +90,7 @@
 }
 .board-app .board-title > button svg {
   flex-shrink: 0;
-  color: #8a9c80;
+  color: var(--text-muted);
 }
 .board-app input,
 .board-app select {
@@ -97,10 +100,10 @@
   width: 100%;
   height: 34px;
   padding: 5px 8px;
-  border: 1px solid #d6dfcc;
+  border: 1px solid var(--border-input);
   border-radius: 5px;
-  background: #f8f8f0;
-  color: #224d36;
+  background: var(--surface);
+  color: var(--green-text);
   font: inherit;
   font-size: 12px;
   text-overflow: ellipsis;
@@ -122,9 +125,9 @@
   height: 28px;
   min-height: 28px;
   padding: 0;
-  background: #e8eedf;
-  color: #496746;
-  border: 1px solid #dce3d3;
+  background: var(--control-hover);
+  color: var(--green-text);
+  border: 1px solid var(--border);
   border-radius: 5px;
 }
 .board-app .formation-slots {
@@ -138,24 +141,24 @@
   min-height: 28px;
   min-width: 0;
   padding: 0 4px;
-  border: 1px solid #dce3d3;
+  border: 1px solid var(--border);
   border-radius: 5px;
-  background: #eef0e6;
-  color: #496746;
+  background: var(--control);
+  color: var(--green-text);
   font-size: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .board-app .formation-slot[aria-pressed="true"] {
-  background: #224d36;
-  border-color: #224d36;
-  color: white;
+  background: var(--selected);
+  border-color: var(--selected-border);
+  color: var(--on-selected);
 }
 .board-app .formation-slot.empty {
   border-style: dashed;
   background: transparent;
-  color: #9baa91;
+  color: var(--text-muted);
 }
 .board-app .formation-rename {
   display: flex;
@@ -191,7 +194,7 @@
   margin-right: auto;
   font-size: 12px;
   font-weight: 600;
-  color: #496746;
+  color: var(--green-text);
 }
 .board-app .clear-players-button {
   display: inline-flex;
@@ -201,13 +204,13 @@
   width: 30px;
   min-height: 30px;
   padding: 5px;
-  border: 1px solid #e5cfc7;
+  border: 1px solid var(--danger-border);
   border-radius: 6px;
-  background: #f9eee8;
-  color: #a64430;
+  background: var(--danger-surface);
+  color: var(--danger);
 }
 .board-app .clear-players-button:hover {
-  background: #f2dcd2;
+  background: var(--danger-hover);
 }
 .board-app .clear-players-actions {
   display: flex;
@@ -233,7 +236,7 @@
   top: 10px;
   bottom: 10px;
   width: 1px;
-  background: #b5c3a9;
+  background: var(--border);
   pointer-events: none;
 }
 .board-app .sidebar .format-options button {
@@ -246,7 +249,7 @@
 .board-app .sidebar .format-hint {
   font-size: 10px;
   margin: 0;
-  color: #8a947e;
+  color: var(--text-muted);
 }
 .board-app .sidebar .roster {
   flex: 1;
@@ -272,7 +275,7 @@
 }
 .board-app .sidebar-palette .palette-instruction {
   font-size: 10px;
-  color: #7b8972;
+  color: var(--text-muted);
   font-weight: 400;
   margin-bottom: 6px;
 }
@@ -311,17 +314,17 @@
   min-height: 34px;
   padding: 5px;
   text-align: left;
-  color: #224d36;
-  background: #eef0e6;
-  border: 1px solid #dce3d3;
+  color: var(--green-text);
+  background: var(--control);
+  border: 1px solid var(--border);
   border-radius: 5px;
   font-size: 11px;
 }
 .board-app .roster-player:hover {
-  background: #e2e9d9;
+  background: var(--control-hover);
 }
 .board-app .roster-player:focus-visible {
-  outline: 2px solid #224d36;
+  outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 .board-app .roster-number {
@@ -330,13 +333,13 @@
   flex: 0 0 23px;
   height: 23px;
   border-radius: 50%;
-  background: #ff9048;
-  color: #40210c;
+  background: var(--team-a);
+  color: var(--team-a-ink);
   font-weight: 700;
 }
 .board-app .roster-player.team-B .roster-number {
-  background: #569cfa;
-  color: #102f57;
+  background: var(--team-b);
+  color: var(--team-b-ink);
 }
 .board-app .roster-player-name {
   min-width: 0;
@@ -345,11 +348,11 @@
 }
 .board-app .roster-player > svg {
   flex-shrink: 0;
-  color: #7b8972;
+  color: var(--text-muted);
 }
 .board-app .roster-empty {
   margin: 0;
-  color: #7b8972;
+  color: var(--text-muted);
   font-size: 11px;
 }
 .board-app .sidebar .presence {
@@ -409,8 +412,8 @@
 }
 .board-app .pitch-format-badge {
   font-size: 10px;
-  color: #687c5f;
-  border: 1px solid #d6dfcc;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 5px 9px;
   white-space: nowrap;
@@ -437,17 +440,17 @@
   min-width: 40px;
   min-height: 36px;
   padding: 5px 9px;
-  border: 1px solid #d6dfcc;
+  border: 1px solid var(--border);
   border-radius: 20px;
-  background: #fafaf3;
-  color: #496746;
+  background: var(--surface);
+  color: var(--green-text);
   font-size: 10px;
 }
 .board-app .orientation-switch:hover {
-  background: #e8eedf;
+  background: var(--control-hover);
 }
 .board-app .orientation-switch:focus-visible {
-  outline: 2px solid #224d36;
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 .board-app .orientation-icon {
@@ -516,6 +519,21 @@
   margin: 0;
   font-size: 9px;
 }
+.board-app .pitch-help {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.board-app .pitch-help > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.board-app .pitch-help > span:first-child {
+  font-size: 8px;
+  letter-spacing: 0.8px;
+}
 .board-app .error-banner {
   flex-shrink: 0;
   font-size: 11px;
@@ -571,6 +589,11 @@
     grid-column: 3;
     grid-row: 1/3;
   }
+  .board-app .board-header .board-header-actions {
+    grid-column: 3;
+    grid-row: 1/3;
+    gap: 6px;
+  }
 
   .board-app .board-layout {
     display: flex;
@@ -591,7 +614,7 @@
     align-content: start;
     width: 100%;
     border: 0;
-    border-top: 1px solid #d6ddcf;
+    border-top: 1px solid var(--border-subtle);
   }
   .board-app .sidebar > section {
     padding: 6px 10px;
@@ -677,10 +700,10 @@
     bottom: 218px;
     padding: 12px;
     margin: 0;
-    background: #fafaf3;
-    border: 1px solid #cdd7c7;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    box-shadow: 0 8px 30px #0002;
+    box-shadow: 0 8px 30px var(--shadow-soft);
   }
   .board-app .pitch-heading h1 {
     font-size: 13px;
@@ -811,10 +834,10 @@
     top: 80px;
     width: 260px;
     padding: 12px;
-    background: #fafaf3;
-    border: 1px solid #cdd7c7;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    box-shadow: 0 8px 30px #0002;
+    box-shadow: 0 8px 30px var(--shadow-soft);
   }
 }
 

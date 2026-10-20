@@ -9,6 +9,7 @@ import { AlertCircle } from "lucide-react";
 import { enterBoard, openBoardLink } from "../lib/api";
 import { Logo, Nickname } from "../components/Identity";
 import BoardPage from "./BoardPage";
+import ThemeToggle from "../components/ThemeToggle";
 export default function BoardGate() {
   const { id = "", code = "" } = useParams(),
     [params] = useSearchParams(),
@@ -70,6 +71,7 @@ export default function BoardGate() {
   if (error)
     return (
       <div className="status-page">
+        <ThemeToggle floating />
         <Logo />
         <AlertCircle size={36} />
         <h1>No pudimos abrir la cancha</h1>
@@ -83,6 +85,7 @@ export default function BoardGate() {
   if (!resolved)
     return (
       <div className="status-page">
+        <ThemeToggle floating />
         <Logo />
         <div className="spinner" />
         <p>Validando el enlace…</p>

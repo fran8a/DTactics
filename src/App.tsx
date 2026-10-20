@@ -3,6 +3,7 @@ import Home from "./pages/HomePage";
 import { lazy, Suspense } from "react";
 const BoardGate = lazy(() => import("./pages/BoardGate"));
 import { Logo } from "./components/Identity";
+import ThemeToggle from "./components/ThemeToggle";
 export default function App() {
   return (
     <Routes>
@@ -13,6 +14,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="status-page">
+                <ThemeToggle floating />
                 <div className="spinner" />
                 <p>Preparando la cancha…</p>
               </div>
@@ -28,6 +30,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="status-page">
+                <ThemeToggle floating />
                 <div className="spinner" />
                 <p>Preparando la cancha…</p>
               </div>
@@ -41,6 +44,7 @@ export default function App() {
         path="*"
         element={
           <div className="status-page">
+            <ThemeToggle floating />
             <Logo />
             <h1>La pelota se fue afuera.</h1>
             <Link to="/">Volver al inicio</Link>

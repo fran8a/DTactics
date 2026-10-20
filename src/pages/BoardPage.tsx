@@ -16,6 +16,7 @@ import {
 import { useBoard } from "../features/useBoard";
 import { fieldDrop, freePosition, type Player } from "../lib/model";
 import PlayerPalette from "../components/PlayerPalette";
+import ThemeToggle from "../components/ThemeToggle";
 import PlayerForm from "../components/PlayerForm";
 import ClearPlayersDialog from "../components/ClearPlayersDialog";
 import { SocialLinks, Logo } from "../components/Identity";
@@ -355,14 +356,17 @@ export default function BoardPage({
           <i className="dot" />
           {board.status}
         </span>
-        <button
-          className="primary share"
-          aria-label="Copiar enlace"
-          onClick={() => void copy()}
-        >
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-          <span>{copied ? "¡Copiado!" : "Copiar enlace"}</span>
-        </button>
+        <div className="board-header-actions">
+          <ThemeToggle />
+          <button
+            className="primary share"
+            aria-label="Copiar enlace"
+            onClick={() => void copy()}
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            <span>{copied ? "¡Copiado!" : "Copiar enlace"}</span>
+          </button>
+        </div>
       </header>
       {(board.error || localError) && (
         <div className="error-banner" role="alert">
@@ -654,10 +658,12 @@ export default function BoardPage({
           </div>
           <div className="pitch-caption">
             <SocialLinks />
-            <span>
-              <Move size={14} /> Arrastrá para mover · Doble clic para editar
-            </span>
-            <span>POSICIONES GUARDADAS AL SOLTAR</span>
+            <div className="pitch-help">
+              <span>POSICIONES GUARDADAS AL SOLTAR</span>
+              <span>
+                <Move size={14} /> Arrastrá para mover · Doble clic para editar
+              </span>
+            </div>
           </div>
         </main>
       </div>

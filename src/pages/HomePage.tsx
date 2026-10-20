@@ -4,6 +4,7 @@ import { ArrowUpRight, Plus, Users, Radio, Move } from "lucide-react";
 import { configured, createBoard } from "../lib/api";
 import { SocialLinks, Logo, Nickname } from "../components/Identity";
 import LandingPitch from "../components/LandingPitch";
+import ThemeToggle from "../components/ThemeToggle";
 const GuideBalls = lazy(() => import("../components/GuideBalls"));
 export default function Home() {
   const navigate = useNavigate(),
@@ -32,14 +33,17 @@ export default function Home() {
         <span className="header-tag">
           <i className="dot" /> FÚTBOL, ENTRE TODOS.
         </span>
-        <button
-          type="button"
-          className="nav-link"
-          aria-controls="como-funciona"
-          onClick={() => setGuideClick((click) => click + 1)}
-        >
-          Cómo se juega <ArrowUpRight size={16} />
-        </button>
+        <div className="home-header-actions">
+          <button
+            type="button"
+            className="nav-link"
+            aria-controls="como-funciona"
+            onClick={() => setGuideClick((click) => click + 1)}
+          >
+            Cómo se juega <ArrowUpRight size={16} />
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
       <main>
         <section className="hero">

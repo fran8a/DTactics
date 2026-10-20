@@ -156,8 +156,13 @@ test("vaivén continuo, inercia corta y navegación fuera de la maqueta", async 
   expect(Math.max(...end.map((n, i) => Math.abs(n - later[i])))).toBeLessThan(
     0.25,
   );
-  await page.getByRole("link", { name: /Cómo se juega/ }).click();
-  await expect(page).toHaveURL(/#como-funciona$/);
+  await page.getByRole("button", { name: /Cómo se juega/ }).click();
+  await expect(page.locator(".physics-ball")).toHaveCount(1);
+  await expect(page.locator(".step").first()).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("rotación táctil móvil sin desplazar la página ni desbordar", async ({

@@ -119,7 +119,7 @@ export default function TacticsPanel({
   return (
     <section className="tactics-panel" aria-label="Jugada táctica">
       <div className="tactics-heading">
-        <h2>Jugada (beta)</h2>
+        <h2>Situaciones (beta)</h2>
         <button
           type="button"
           className={`tactics-mode ${editor.preparing ? "active" : ""}`}

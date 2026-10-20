@@ -216,7 +216,7 @@ export default function GuideBalls({
           const button = document.querySelector<HTMLElement>(".home .hero-cta");
           button?.animate(
             [
-              { boxShadow: "0 0 0 5px #e98c5080" },
+              { boxShadow: "0 0 0 5px var(--accent)" },
               { boxShadow: "0 0 0 0 transparent" },
             ],
             { duration: 350 },
@@ -542,11 +542,11 @@ export default function GuideBalls({
           }}
         >
           <svg viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="49" fill="#fbfbf1" />
+            <circle cx="50" cy="50" r="49" fill="var(--ball-paper)" />
             <g fill="none" stroke="#858c83" strokeWidth="1.2">
               <path d="M38 34 19 22M62 34 81 22M71 57 94 64M50 73 50 98M29 57 6 64M19 22 12 45 6 64M81 22 88 45 94 64M6 64 29 83 50 98 71 83 94 64M19 22 50 12 81 22" />
             </g>
-            <g fill="#1b3029">
+            <g fill="var(--ball-ink)">
               <path d="m50 27 23 17-9 27H36l-9-27ZM9 16l15 4-6 21L0 43ZM76 20l15-4 9 27-18-2ZM17 76l18 4 4 20-22-8ZM65 80l18-4v16l-22 8ZM39 0h22l-4 13H43Z" />
             </g>
           </svg>

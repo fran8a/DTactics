@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="theme-color" content="#101d19" />
+    <script>
+      (() => {
+        let selected;
+        try {
+          selected = localStorage.getItem("bizarron.theme.v1");
+        } catch {}
+        const theme =
+          selected === "dark" || selected === "light"
+            ? selected
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.documentElement.style.backgroundColor = `var(--page, ${theme === "dark" ? "#101814" : "#f5f5ed"})`;
+        document.documentElement.style.color = `var(--text, ${theme === "dark" ? "#edf2e9" : "#182d25"})`;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "dark" ? "#101814" : "#f5f5ed";
+      })();
+    </script>
     <meta name="referrer" content="no-referrer" />
     <title>Bizarrón · La pizarra de los pibes</title>
     <meta

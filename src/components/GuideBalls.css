@@ -13,7 +13,7 @@
   height: 42px;
   padding: 0;
   border-radius: 50%;
-  background: #fbfbf1;
+  background: var(--ball-paper);
   pointer-events: auto;
   touch-action: none;
   user-select: none;
@@ -49,10 +49,10 @@
   cursor: grabbing;
 }
 .physics-ball:focus-visible {
-  outline: 3px solid #e98c50;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 .pitch-scene[data-ball-impact="true"] .pitch-face {
-  outline: 3px solid #e98c50;
+  outline: 3px solid var(--accent);
   outline-offset: 5px;
 }

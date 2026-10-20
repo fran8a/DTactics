@@ -12,6 +12,7 @@ import {
   RegularPolygon,
 } from "react-konva";
 import type Konva from "konva";
+import { usePitchColors, type PitchColors } from "./usePitchColors";
 import { usePlayerDrag, type DragCallbacks } from "./usePlayerDrag";
 import {
   toScreen,
@@ -45,6 +46,7 @@ type Props = DragCallbacks & {
   onWaypointChange?: (index: number, point: TacticalPoint) => void;
 };
 export default function FootballField(props: Props) {
+  const colors = usePitchColors();
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(500);
   const [availableHeight, setAvailableHeight] = useState(800);
@@ -81,7 +83,7 @@ export default function FootballField(props: Props) {
     availableHeight,
   );
   const { scale, height, apron } = geometry;
-  const line = "#c9e1cf";
+  const line = colors.line;
   const screenPoint = (point: TacticalPoint) => {
     const p = toScreen(point.x, point.y, props.horizontal);
     return {
@@ -161,7 +163,12 @@ export default function FootballField(props: Props) {
               scaleX={scale}
               scaleY={scale}
             >
-              <Rect width={680} height={1050} fill="#246044" cornerRadius={8} />
+              <Rect
+                width={680}
+                height={1050}
+                fill={colors.grass}
+                cornerRadius={8}
+              />
               {Array.from({ length: 10 }, (_, i) => (
                 <Rect
                   key={i}
@@ -265,7 +272,7 @@ export default function FootballField(props: Props) {
                   ? (props.draftPoints ?? [])
                   : (props.routes?.[player.id] ?? []);
                 if (!points.length) return null;
-                const color = player.team === "A" ? "#ff9048" : "#569cfa";
+                const color = player.team === "A" ? colors.teamA : colors.teamB;
                 return (
                   <Group key={player.id}>
                     <Arrow
@@ -372,8 +379,8 @@ export default function FootballField(props: Props) {
             >
               <Circle
                 radius={ballRadius}
-                fill="#fffdf4"
-                stroke="#17251e"
+                fill={colors.ball}
+                stroke={colors.ballInk}
                 strokeWidth={2}
                 shadowColor="#000"
                 shadowBlur={5}
@@ -383,7 +390,7 @@ export default function FootballField(props: Props) {
               <RegularPolygon
                 sides={5}
                 radius={ballRadius * 0.45}
-                fill="#17251e"
+                fill={colors.ballInk}
                 listening={false}
               />
               {Array.from({ length: 5 }, (_, index) => {
@@ -397,7 +404,7 @@ export default function FootballField(props: Props) {
                       Math.cos(angle) * ballRadius * 0.9,
                       Math.sin(angle) * ballRadius * 0.9,
                     ]}
-                    stroke="#17251e"
+                    stroke={colors.ballInk}
                     strokeWidth={1.5}
                     listening={false}
                   />
@@ -408,6 +415,7 @@ export default function FootballField(props: Props) {
               <Token
                 key={player.id}
                 player={player}
+                colors={colors}
                 width={width}
                 height={height}
                 index={index}
@@ -425,8 +433,15 @@ function Token({
   width,
   height,
   index,
+  colors,
   ...props
-}: Props & { player: Player; width: number; height: number; index: number }) {
+}: Props & {
+  player: Player;
+  width: number;
+  height: number;
+  index: number;
+  colors: PitchColors;
+}) {
   const node = useRef<Konva.Group>(null);
   const lock = props.locks.find(
     (l) => l.player_id === player.id && Date.parse(l.expires_at) > props.now,
@@ -517,11 +532,11 @@ function Token({
         fill={
           player.team === "A"
             ? muted
-              ? "#b4a195"
-              : "#ff9048"
+              ? colors.mutedA
+              : colors.teamA
             : muted
-              ? "#96a6bb"
-              : "#569cfa"
+              ? colors.mutedB
+              : colors.teamB
         }
         stroke={lock ? "#fff" : "#ffffffa0"}
         strokeWidth={lock ? 3 : 1.5}
@@ -539,7 +554,7 @@ function Token({
         text={String(player.number)}
         fontSize={17}
         fontStyle="bold"
-        fill={player.team === "A" ? "#40210c" : "#102f57"}
+        fill={player.team === "A" ? colors.inkA : colors.inkB}
       />
       <Text
         x={display.x < 60 ? -18 : display.x > width - 60 ? -96 : -57}
@@ -554,7 +569,7 @@ function Token({
         text={player.name}
         fontSize={12}
         fontStyle="bold"
-        fill={muted ? "#5d695c" : "white"}
+        fill={muted ? colors.benchName : colors.name}
         shadowColor="#102c20"
         shadowBlur={muted ? 0 : 3}
       />
@@ -566,7 +581,7 @@ function Token({
           align="center"
           text={`${props.people.find((p) => p.user_id === lock.user_id)?.name ?? "Alguien"} está moviendo`}
           fontSize={10}
-          fill="#ffe8a5"
+          fill={muted ? colors.benchName : colors.lockName}
         />
       )}
     </Group>

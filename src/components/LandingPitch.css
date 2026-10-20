@@ -15,7 +15,7 @@
   cursor: grabbing;
 }
 .pitch-scene:focus-visible:not([data-pointer-focus="true"]) {
-  outline: 2px solid #ca6839;
+  outline: 2px solid var(--hero-accent);
   outline-offset: 18px;
 }
 .pitch-solid {
@@ -32,7 +32,7 @@
 .pitch-face {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  background: #183b2c;
+  background: var(--art-surface);
   border-radius: 14px;
 }
 .pitch-face::after {
@@ -48,7 +48,7 @@
   position: relative;
   padding: 24px 25px 18px;
   transform: translateZ(6px);
-  box-shadow: 0 22px 40px #19362618;
+  box-shadow: 0 22px 40px var(--shadow-art);
 }
 .pitch-back {
   position: absolute;
@@ -68,8 +68,8 @@
   position: absolute;
   inset: 0;
   border-radius: 14px;
-  background: #183b2c;
-  box-shadow: 0 0 0 0.35px #183b2c;
+  background: var(--art-surface);
+  box-shadow: 0 0 0 0.35px var(--art-surface);
   pointer-events: none;
 }
 @supports not (transform-style: preserve-3d) {

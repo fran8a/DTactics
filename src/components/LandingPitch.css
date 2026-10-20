@@ -86,3 +86,9 @@
     display: none;
   }
 }
+
+@media (max-width: 760px), (max-width: 1024px) and (pointer: coarse) {
+  .hero-art.pitch-scene {
+    touch-action: pan-y pinch-zoom;
+  }
+}

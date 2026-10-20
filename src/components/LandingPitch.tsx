@@ -9,6 +9,7 @@ import {
   type Quaternion,
 } from "../lib/rotation";
 import "./LandingPitch.css";
+import { mobileQuery } from "../features/useMobileLayout";
 
 // Browser-projected samples of both rounded faces, including the slab's thickness.
 const collisionProbes = [-6, 6].flatMap((z) =>
@@ -129,8 +130,14 @@ function LandingPitch() {
         frame = requestAnimationFrame(animate);
       }
     };
+    let touchStart: { id: number; x: number; y: number } | null = null;
     const down = (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0 || pointer) return;
+      // Let the browser own vertical scrolling on phones.
+      if (e.pointerType === "touch" && window.matchMedia(mobileQuery).matches) {
+        touchStart = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        return;
+      }
       e.preventDefault();
       root.focus({ preventScroll: true });
       root.dataset.pointerFocus = "true";
@@ -146,6 +153,19 @@ function LandingPitch() {
       root.dataset.dragging = "true";
     };
     const move = (e: PointerEvent) => {
+      if (touchStart?.id === e.pointerId) {
+        const start = touchStart;
+        const dx = e.clientX - start.x,
+          dy = e.clientY - start.y;
+        if (Math.hypot(dx, dy) < 8) return;
+        touchStart = null;
+        if (Math.abs(dx) < Math.abs(dy) * 1.25) return;
+        root.setPointerCapture(e.pointerId);
+        base = rendered;
+        idle = phase = vx = vy = 0;
+        pointer = { ...start, time: e.timeStamp - 16 };
+        root.dataset.dragging = "true";
+      }
       if (!pointer || pointer.id !== e.pointerId) return;
       e.preventDefault();
       const dx = e.clientX - pointer.x,
@@ -167,6 +187,7 @@ function LandingPitch() {
       draw(base);
     };
     const end = (e: PointerEvent) => {
+      if (touchStart?.id === e.pointerId) touchStart = null;
       if (!pointer || pointer.id !== e.pointerId) return;
       if (reduced || e.type !== "pointerup" || e.timeStamp - pointer.time > 90)
         vx = vy = 0;

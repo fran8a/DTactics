@@ -193,7 +193,7 @@ test("rotación táctil móvil sin desplazar la página ni desbordar", async ({
     for (let i = 1; i <= 10; i++)
       await cdp.send("Input.dispatchTouchEvent", {
         type: "touchMove",
-        touchPoints: [{ x: x + i * 9, y: y - i * 7, id: 1 }],
+        touchPoints: [{ x: x + i * 9, y: y - i, id: 1 }],
       });
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchEnd",

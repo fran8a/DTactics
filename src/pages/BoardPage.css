@@ -1025,3 +1025,153 @@
     max-height: min(60dvh, 440px);
   }
 }
+
+/* Mobile tools overlay the pitch instead of consuming its height. */
+@media (max-width: 760px), (max-width: 1024px) and (pointer: coarse) {
+  .board-app .board-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .board-app .pitch-panel {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    padding: 34px 8px 72px;
+  }
+  .board-app .pitch-caption {
+    display: none;
+  }
+  .board-app .pitch-heading {
+    top: 6px;
+    left: 12px;
+    right: 12px;
+  }
+  .mobile-board-actions {
+    position: absolute;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    pointer-events: none;
+  }
+  .mobile-board-actions > * {
+    pointer-events: auto;
+  }
+  .board-app .compact-palette {
+    position: relative;
+    margin: 0;
+  }
+  .board-app .compact-palette .palette-teams {
+    display: flex;
+    gap: 10px;
+  }
+  .board-app .compact-palette .palette-team {
+    width: auto;
+  }
+  .board-app .compact-palette .palette-token {
+    width: 58px;
+    height: 44px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin: 0;
+  }
+  .compact-palette .palette-help,
+  .compact-palette .palette-error {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: min(280px, 80vw);
+    padding: 10px;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px #0002;
+  }
+  .mobile-options-toggle {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    border-radius: 24px;
+    color: var(--text);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    box-shadow:
+      0 5px 18px #0002,
+      inset 0 1px 0 #ffffff50;
+  }
+  .mobile-options-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: #0005;
+  }
+  .board-app .sidebar.mobile-options-panel {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(88vw, 360px);
+    height: 100dvh;
+    max-height: none;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-left: 1px solid var(--border);
+    box-shadow: -12px 0 40px #0003;
+    animation: mobile-options-enter 220ms ease-out;
+  }
+  .mobile-options-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-options-heading h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+  .mobile-options-heading button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .board-app .mobile-options-panel > * {
+    order: initial;
+    flex-shrink: 0;
+  }
+  .board-app .mobile-options-panel .roster {
+    flex: 1 0 auto;
+    min-height: 180px;
+  }
+  .board-app .mobile-options-panel .team-columns {
+    max-height: none;
+    overflow: visible;
+  }
+  .board-app .mobile-options-panel .presence {
+    margin-top: auto;
+  }
+}
+@keyframes mobile-options-enter {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-app .sidebar.mobile-options-panel {
+    animation: none;
+  }
+}

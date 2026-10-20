@@ -4,6 +4,7 @@ import { useDragScroll } from "./useDragScroll";
 type Point = { x: number; y: number };
 type Addition = Point & { team: "A" | "B"; id: string };
 type Props = {
+  compact?: boolean;
   disabled: boolean;
   fullTeams?: { A: boolean; B: boolean };
   onPendingChange?: (pending: boolean) => void;
@@ -16,6 +17,7 @@ type Props = {
   }) => Promise<void>;
 };
 export default function PlayerPalette({
+  compact = false,
   disabled,
   fullTeams,
   onPendingChange,
@@ -57,8 +59,10 @@ export default function PlayerPalette({
     }
   }
   return (
-    <div className="player-palette">
-      <p className="palette-instruction">Arrastrá o tocá para agregar</p>
+    <div className={`player-palette${compact ? " compact-palette" : ""}`}>
+      {!compact && (
+        <p className="palette-instruction">Arrastrá o tocá para agregar</p>
+      )}
       <div className="palette-teams">
         {(["A", "B"] as const).map((team) => (
           <div className="palette-team" key={team}>
@@ -118,12 +122,15 @@ export default function PlayerPalette({
                   void add({ team, id: crypto.randomUUID() });
               }}
             >
-              <Plus size={25} aria-hidden="true" />
+              <Plus size={compact ? 18 : 25} aria-hidden="true" />
+              {compact && <strong>{team}</strong>}
             </button>
-            <span>
-              Equipo {team}
-              {fullTeams?.[team] ? " · Completo" : ""}
-            </span>
+            {!compact && (
+              <span>
+                Equipo {team}
+                {fullTeams?.[team] ? " · Completo" : ""}
+              </span>
+            )}
           </div>
         ))}
       </div>

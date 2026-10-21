@@ -6,18 +6,27 @@ import { SocialLinks, Logo, Nickname } from "../components/Identity";
 import LandingPitch from "../components/LandingPitch";
 import ThemeToggle from "../components/ThemeToggle";
 import GuideBalls from "../components/GuideBalls";
+import { mobileQuery } from "../features/useMobileLayout";
 export default function Home() {
   const layout = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const resize = () => {
+      const mobile = window.matchMedia(mobileQuery).matches;
+      // Match the reference's 80% composition on small desktop windows.
+      const density = mobile
+        ? 1
+        : Math.min(1, Math.max(0.8, window.innerWidth / 1800));
+      layout.current?.style.setProperty("--home-density", String(density));
       layout.current?.style.setProperty(
         "--pitch-scale",
         String(
-          Math.min(
-            1,
-            window.innerWidth / 1400,
-            Math.max(0.15, (window.innerHeight - 230) / 735),
-          ),
+          mobile
+            ? Math.min(1, ((window.innerWidth - 52) * 0.88) / 390)
+            : Math.min(
+                1,
+                window.innerWidth / density / 1400,
+                Math.max(0.15, (window.innerHeight / density - 230) / 735),
+              ),
         ),
       );
     };

@@ -1,10 +1,12 @@
-import type { Player, TacticalPoint, Tactics } from "./model";
+import type { Player, TacticalPoint, Tactics, TacticalSpeed } from "./model";
 
 export const emptyTactics: Tactics = {
   routes: {},
+  speeds: {},
   duration_ms: 5000,
   version: 1,
 };
+export const TACTICAL_SPEEDS: readonly TacticalSpeed[] = [0.5, 0.75, 1, 1.5, 2];
 export const MAX_ROUTE_POINTS = 24;
 export type Track = {
   points: TacticalPoint[];
@@ -30,7 +32,12 @@ export function buildTrack(
   return { points, distances, length: distances.at(-1)! };
 }
 
-export function sampleTrack(track: Track, progress: number): TacticalPoint {
+export function sampleTrack(
+  track: Track,
+  progress: number,
+  speed: TacticalSpeed = 1,
+): TacticalPoint {
+  progress = Math.min(1, progress * speed);
   if (progress >= 1 || !track.length) return track.points.at(-1)!;
   const distance = Math.max(0, progress) * track.length;
   for (let i = 1; i < track.points.length; i++) {
@@ -54,5 +61,8 @@ export function tacticalSignature(
   tactics: Tactics,
   players: Player[],
 ) {
-  return `${formation}:${tactics.version}:${players.map((p) => `${p.id}/${p.version}/${p.placement}/${p.x}/${p.y}`).join(";")}`;
+  const speeds = Object.entries(tactics.speeds ?? {}).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  return `${JSON.stringify(speeds)}:${formation}:${tactics.version}:${players.map((p) => `${p.id}/${p.version}/${p.placement}/${p.x}/${p.y}`).join(";")}`;
 }

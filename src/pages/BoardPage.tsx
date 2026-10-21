@@ -29,6 +29,7 @@ import { getBoardLink } from "../lib/api";
 import { emptyTactics } from "../lib/tactics";
 import { useTacticalPlayback } from "../features/useTacticalPlayback";
 import { useTacticsEditor } from "../features/useTacticsEditor";
+import PlayerSpeedModal from "../components/PlayerSpeedModal";
 import TacticsPanel from "../components/TacticsPanel";
 import "./BoardPage.css";
 const FootballField = lazy(() => import("../components/FootballField"));
@@ -61,6 +62,13 @@ export default function BoardPage({
     const preview = board.previews[p.id];
     return preview ? { ...p, x: preview.x, y: preview.y } : p;
   });
+  const [speedPlayer, setSpeedPlayer] = useState<Player | null>(null);
+  const speedTarget = players.find(
+    (p) =>
+      p.id === speedPlayer?.id &&
+      p.placement === "field" &&
+      p.formation_id === board.data?.formation.id,
+  );
   const tactics = board.data?.tactics ?? emptyTactics;
   const playback = useTacticalPlayback(
     board.data?.formation.id,
@@ -121,6 +129,7 @@ export default function BoardPage({
           if (active) setLocalError(e.message);
         });
     setEditor(null);
+    setSpeedPlayer(null);
     return () => {
       active = false;
     };
@@ -452,6 +461,7 @@ export default function BoardPage({
         </div>
       </section>
       <TacticsPanel
+        key={data.formation.id}
         players={data.players}
         tactics={tactics}
         editor={tacticEditor}
@@ -467,6 +477,7 @@ export default function BoardPage({
         }
         canUndo={board.canUndo}
         canRedo={board.canRedo}
+        onSpeed={setSpeedPlayer}
         onUndo={board.undo}
         onRedo={board.redo}
       />
@@ -664,11 +675,13 @@ export default function BoardPage({
                   players={playback.players}
                   routePlayers={players}
                   routes={tactics.routes}
+                  speeds={tactics.speeds}
                   preparing={tacticEditor.preparing}
                   playbackLocked={playback.locked}
                   selectedRoute={tacticEditor.selected?.id}
                   draftPoints={tacticEditor.draft?.points}
                   onRouteSelect={tacticEditor.targetPlayer}
+                  onSpeedSelect={setSpeedPlayer}
                   onArrowSelect={tacticEditor.editArrow}
                   onWaypointSave={tacticEditor.add}
                   onWaypoint={tacticEditor.add}
@@ -731,6 +744,21 @@ export default function BoardPage({
               setSaving(false);
             }
           }}
+        />
+      )}
+      {speedTarget && tacticEditor.preparing && !playback.locked && (
+        <PlayerSpeedModal
+          key={speedTarget.id}
+          player={speedTarget}
+          speed={tactics.speeds?.[speedTarget.id] ?? 1}
+          disabled={
+            !board.connected ||
+            board.busy ||
+            tacticEditor.busy ||
+            tacticEditor.dirty
+          }
+          onSave={(value) => tacticEditor.speed(speedTarget, value)}
+          onClose={() => setSpeedPlayer(null)}
         />
       )}
       {editor && (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Player, Tactics } from "../lib/model";
+import type { Player, Tactics, TacticalSpeed } from "../lib/model";
 import type { PlaybackSignal } from "./useBoard";
 import {
   buildTrack,
@@ -14,6 +14,7 @@ type Capture = {
   players: Player[];
   tracks: Record<string, Track>;
   duration: number;
+  speeds: Record<string, TacticalSpeed>;
 };
 
 export function useTacticalPlayback(
@@ -64,6 +65,7 @@ export function useTacticalPlayback(
       players: players.map((p) => ({ ...p })),
       tracks,
       duration: tactics.duration_ms,
+      speeds: { ...tactics.speeds },
     };
   }, [players, tactics, signature]);
   useEffect(() => {
@@ -136,7 +138,11 @@ export function useTacticalPlayback(
       setMessage("");
     }
     setPhase("playing");
-    broadcast?.("play", elapsed.current, capture.current?.signature ?? signature);
+    broadcast?.(
+      "play",
+      elapsed.current,
+      capture.current?.signature ?? signature,
+    );
   }
   function pause() {
     if (phase !== "playing" || !capture.current) return;
@@ -157,7 +163,16 @@ export function useTacticalPlayback(
     capture.current && phase !== "idle"
       ? capture.current.players.map((p) => {
           const track = capture.current!.tracks[p.id];
-          return track ? { ...p, ...sampleTrack(track, progress) } : p;
+          return track
+            ? {
+                ...p,
+                ...sampleTrack(
+                  track,
+                  progress,
+                  capture.current!.speeds[p.id] ?? 1,
+                ),
+              }
+            : p;
         })
       : players;
   return {
@@ -171,4 +186,3 @@ export function useTacticalPlayback(
     reset,
   };
 }
-

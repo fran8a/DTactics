@@ -46,7 +46,9 @@ export type HistoryOperation = {
 };
 export type TacticalPoint = { x: number; y: number };
 export type Ball = TacticalPoint & { id: string; version: number };
+export type TacticalSpeed = 0.5 | 0.75 | 1 | 1.5 | 2;
 export type TacticsConfig = {
+  speeds: Record<string, TacticalSpeed>;
   routes: Record<string, TacticalPoint[]>;
   duration_ms: number;
 };

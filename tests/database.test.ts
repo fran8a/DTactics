@@ -154,6 +154,222 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
   afterAll(async () => {
     await db.close();
   });
+  it("valida velocidades de titulares y protege permisos, versiones e historial", async () => {
+    const c = await extended();
+    const player = randomUUID(),
+      substitute = randomUUID();
+    let s = await quickV2(a, c, player);
+    await quickV2(a, c, substitute, "B", "bench");
+    const foreign = await extended();
+    const foreignPlayer = randomUUID();
+    await quickV2(a, foreign, foreignPlayer);
+    const save = (
+      speeds: unknown,
+      version = s.tactics.version,
+      actor = a,
+      operation = randomUUID(),
+    ) =>
+      user(actor, () =>
+        call<any>("edit_tactics", [
+          c.board,
+          c.formation,
+          "{}",
+          5000,
+          version,
+          operation,
+          JSON.stringify(speeds),
+        ]),
+      );
+    expect(s.tactics.speeds).toEqual({});
+    for (const speeds of [
+      [],
+      "fast",
+      2,
+      null,
+      { [player]: "2" },
+      { [player]: null },
+      { [player]: true },
+      { [player]: {} },
+      { [player]: 0 },
+      { [player]: -1 },
+      { [player]: 1.25 },
+      { [player]: 3 },
+    ]) {
+      await expect(save(speeds)).rejects.toThrow(/velocidad/i);
+    }
+    for (const id of [substitute, foreignPlayer, randomUUID()]) {
+      await expect(save({ [id]: 2 })).rejects.toThrow(/titulares/);
+    }
+    await expect(save({ [player]: 2 }, 1, intruder)).rejects.toThrow(/acceso/);
+    for (const speed of [0.5, 0.75, 1, 1.5, 2]) {
+      const version = s.tactics.version;
+      s = await save({ [player]: speed });
+      expect(s.tactics.speeds).toEqual({ [player]: speed });
+      expect(s.tactics.version).toBe(version + 1);
+      expect(s.operation.before_data.speeds).toBeDefined();
+      expect(s.operation.after_data.speeds).toEqual({ [player]: speed });
+    }
+    const op = s.operation.id;
+    expect((await save({ [player]: 2 }, 1, a, op)).tactics.version).toBe(
+      s.tactics.version,
+    );
+    await expect(save({ [player]: 0.5 }, 1, b)).rejects.toThrow(
+      /jugada cambió/,
+    );
+    const get = () =>
+      user(b, () => call<any>("formation_snapshot", [c.board, c.formation]));
+    expect((await get()).tactics.speeds).toEqual({ [player]: 2 });
+    const reverse = (direction: string, actor = a) =>
+      user(actor, () =>
+        call<any>("reverse_tactics_operation", [
+          c.board,
+          c.formation,
+          op,
+          direction,
+        ]),
+      );
+    await expect(reverse("undo", b)).rejects.toThrow(/historial/);
+    s = await reverse("undo");
+    expect(s.tactics.speeds).toEqual({ [player]: 1.5 });
+    s = await reverse("redo");
+    expect(s.tactics.speeds).toEqual({ [player]: 2 });
+    // A client using the previous RPC arity must preserve configured speeds.
+    s = await user(a, () =>
+      call<any>("edit_tactics", [
+        c.board,
+        c.formation,
+        "{}",
+        4000,
+        s.tactics.version,
+        randomUUID(),
+      ]),
+    );
+    expect(s.tactics.speeds).toEqual({ [player]: 2 });
+    const durationOp = s.operation.id;
+    s = await user(a, () =>
+      call<any>("reverse_tactics_operation", [
+        c.board,
+        c.formation,
+        durationOp,
+        "undo",
+      ]),
+    );
+    s = await save({ [player]: 0.75 });
+    await expect(
+      user(a, () =>
+        call("reverse_tactics_operation", [
+          c.board,
+          c.formation,
+          durationOp,
+          "redo",
+        ]),
+      ),
+    ).rejects.toThrow(/rama de rehacer/);
+    await expect(reverse("undo")).rejects.toThrow(/posteriores/);
+  });
+  it("duplica velocidades por nuevos IDs y las limpia incluso sin recorrido", async () => {
+    const c = await extended();
+    const runner = randomUUID(),
+      stationary = randomUUID();
+    await quickV2(a, c, runner);
+    let s = await quickV2(a, c, stationary, "B");
+    const routes = { [runner]: [{ x: 0.8, y: 0.2 }] };
+    s = await user(a, () =>
+      call<any>("edit_tactics", [
+        c.board,
+        c.formation,
+        JSON.stringify(routes),
+        3500,
+        1,
+        randomUUID(),
+        JSON.stringify({ [runner]: 1.5, [stationary]: 0.5 }),
+      ]),
+    );
+    const originalSpeeds = s.tactics.speeds;
+    const copy = randomUUID();
+    const duplicated = await user(a, () =>
+      call<any>("manage_formation", [
+        c.board,
+        "duplicate",
+        copy,
+        null,
+        c.formation,
+      ]),
+    );
+    const copiedRunner = duplicated.players.find((p: any) => p.team === "A");
+    const copiedStationary = duplicated.players.find(
+      (p: any) => p.team === "B",
+    );
+    expect(duplicated.tactics).toMatchObject({
+      duration_ms: 3500,
+      speeds: { [copiedRunner.id]: 1.5, [copiedStationary.id]: 0.5 },
+      routes: { [copiedRunner.id]: routes[runner] },
+    });
+    expect(duplicated.tactics.speeds[runner]).toBeUndefined();
+    expect(duplicated.tactics.speeds[stationary]).toBeUndefined();
+    // Repeating the duplicate request must not overwrite its independent state.
+    const repeat = await user(a, () =>
+      call<any>("manage_formation", [
+        c.board,
+        "duplicate",
+        copy,
+        null,
+        c.formation,
+      ]),
+    );
+    expect(repeat.tactics).toEqual(duplicated.tactics);
+    const blank = await user(a, () =>
+      call<any>("manage_formation", [
+        c.board,
+        "create",
+        randomUUID(),
+        null,
+        c.formation,
+      ]),
+    );
+    expect(blank.tactics.speeds).toEqual({});
+    const version = s.tactics.version;
+    s = await editV2(
+      a,
+      c,
+      "placement",
+      stationary,
+      { placement: "bench" },
+      s.players.find((p: any) => p.id === stationary).version,
+    );
+    expect(s.tactics.speeds).toEqual({ [runner]: 1.5 });
+    expect(s.tactics.version).toBe(version + 1);
+    const benchOp = s.operation.id;
+    s = await reverseV2(a, c, benchOp);
+    expect(s.tactics.speeds[stationary]).toBeUndefined();
+    expect(s.players.find((p: any) => p.id === stationary).placement).toBe(
+      "field",
+    );
+    s = await editV2(
+      a,
+      c,
+      "delete",
+      runner,
+      {},
+      s.players.find((p: any) => p.id === runner).version,
+    );
+    expect(s.tactics.speeds).toEqual({});
+    expect(s.tactics.routes).toEqual({});
+    const untouched = await user(b, () =>
+      call<any>("formation_snapshot", [c.board, copy]),
+    );
+    expect(untouched.tactics.speeds).toEqual(duplicated.tactics.speeds);
+    expect(originalSpeeds).toEqual({ [runner]: 1.5, [stationary]: 0.5 });
+    const cleanedCopy = await editV2(
+      a,
+      { board: c.board, formation: copy },
+      "delete",
+      copiedStationary.id,
+      {},
+      copiedStationary.version,
+    );
+    expect(cleanedCopy.tactics.speeds).toEqual({ [copiedRunner.id]: 1.5 });
+  });
   it("sincroniza una pelota por formación con permisos, leases e historial", async () => {
     const c = await extended();
     const lease = randomUUID();
@@ -261,7 +477,12 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
     let s = await quickV2(a, c, player);
     const substitute = randomUUID();
     s = await quickV2(a, c, substitute, "B", "bench");
-    expect(s.tactics).toEqual({ routes: {}, duration_ms: 5000, version: 1 });
+    expect(s.tactics).toEqual({
+      routes: {},
+      speeds: {},
+      duration_ms: 5000,
+      version: 1,
+    });
     const routes = {
       [player]: [
         { x: 0.4, y: 0.5 },
@@ -307,7 +528,12 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
     const operation = randomUUID();
     const playersBefore = s.players;
     s = await save(a, routes, 3000, 1, operation);
-    expect(s.tactics).toEqual({ routes, duration_ms: 3000, version: 2 });
+    expect(s.tactics).toEqual({
+      routes,
+      speeds: {},
+      duration_ms: 3000,
+      version: 2,
+    });
     expect(s.players).toEqual(playersBefore);
     expect(s.operation).toMatchObject({
       id: operation,
@@ -441,6 +667,7 @@ describe("migración PostgreSQL, autorización y concurrencia", () => {
     expect(duplicated.players[0].id).not.toBe(player);
     expect(duplicated.tactics).toEqual({
       routes: { [duplicated.players[0].id]: routes[player] },
+      speeds: {},
       duration_ms: 4500,
       version: 1,
     });

@@ -1,7 +1,11 @@
 import type { Page } from "@playwright/test";
 
 /** Exercise the real board UI with isolated state; theme tests never write to a shared database. */
-export async function themeBoardFixture(page: Page) {
+export async function themeBoardFixture(
+  page: Page,
+  dragPermissionDelay = 0,
+  allowDrags = false,
+) {
   const id = "00000000-0000-4000-8000-000000000001";
   const formation = {
     id,
@@ -40,6 +44,7 @@ export async function themeBoardFixture(page: Page) {
       player(3, "A", "bench", 0.4, 0.5),
     ],
     tactics: {
+      speeds: {},
       routes: { "player-1": [{ x: 0.5, y: 0.55 }] },
       duration_ms: 5000,
       version: 1,
@@ -76,7 +81,15 @@ export async function themeBoardFixture(page: Page) {
           saveTactics: async config => setData(old => ({...old, tactics:{...config, version:old.tactics.version+1}})),
           updateBoard: async name => setData(old => ({...old, board:{...old.board, name}})),
           changeFormat: async players_per_team => setData(old => ({...old, board:{...old.board, players_per_team}})),
-          begin: async () => false, moving: () => {}, end: async () => {},
+          begin: async pid => {
+            await new Promise(resolve => setTimeout(resolve, ${dragPermissionDelay}));
+            if (${allowDrags}) setData(old => ({...old, locks:[{player_id:pid, user_id:'qa', lease_id:'qa-drag', expires_at:new Date(Date.now()+12000).toISOString()}]}));
+            return ${allowDrags};
+          },
+          moving: () => {},
+          end: async (pid, x, y, placement) => {
+            if (${allowDrags}) setData(old => ({...old, locks:[], players:old.players.map(p => p.id===pid && x!==undefined ? {...p,x,y,placement,version:p.version+1} : p)}));
+          },
           selectFormation: () => {}, manageFormation: async () => {}, undo: async () => {}, redo: async () => {}
         };
       }`,

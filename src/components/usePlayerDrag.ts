@@ -37,6 +37,7 @@ type Options = DragCallbacks & {
   enabled: boolean;
   lock?: Lease;
   constrainPosition?: (position: Point) => Point;
+  onPositionChange?: (position: Point) => void;
 };
 type Gesture = {
   pointerId: number;
@@ -81,11 +82,17 @@ export function usePlayerDrag(
 
   useLayoutEffect(() => {
     const g = gesture.current;
-    node.current?.position(g?.active && g.local ? g.local : options.position);
+    const position = g?.active && g.local ? g.local : options.position;
+    node.current?.position(position);
+    options.onPositionChange?.(position);
   });
 
   useEffect(() => {
     mounted.current = true;
+    const reposition = (position: Point) => {
+      node.current?.position(position);
+      latest.current.onPositionChange?.(position);
+    };
     const color = (value: boolean | null) => {
       if (mounted.current && shade.current !== value) {
         shade.current = value;
@@ -96,11 +103,11 @@ export function usePlayerDrag(
       if (g.capture?.hasPointerCapture(g.pointerId))
         g.capture.releasePointerCapture(g.pointerId);
     };
-    const restore = (g: Gesture, reposition = true) => {
+    const restore = (g: Gesture, resetPosition = true) => {
       if (gesture.current !== g) return;
       gesture.current = null;
       if (mounted.current) {
-        if (reposition) node.current?.position(latest.current.position);
+        if (resetPosition) reposition(latest.current.position);
         color(null);
         const container = node.current?.getStage()?.container();
         if (container) container.style.cursor = "grab";
@@ -128,7 +135,7 @@ export function usePlayerDrag(
       const target = node.current ? point(node.current, latest.current) : null;
       if (cancelled) {
         g.active = false;
-        node.current?.position(latest.current.position);
+        reposition(latest.current.position);
         color(null);
       }
       try {
@@ -142,7 +149,7 @@ export function usePlayerDrag(
               !current.canEnterField &&
               !outsideField(target))
           ) {
-            node.current?.position(current.position);
+            reposition(current.position);
             await current.end(current.player.id);
           } else if (outsideField(target))
             await current.end(
@@ -200,6 +207,7 @@ export function usePlayerDrag(
         n.position(previousPosition);
       }
       g.local = n.position();
+      current.onPositionChange?.(g.local);
       color(outsideField(point(n, current)));
       n.getStage()!.container().style.cursor = "grabbing";
       if (starting) {

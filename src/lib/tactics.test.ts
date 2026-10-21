@@ -1,7 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { buildTrack, sampleTrack } from "./tactics";
+import {
+  buildTrack,
+  emptyTactics,
+  sampleTrack,
+  tacticalSignature,
+  TACTICAL_SPEEDS,
+} from "./tactics";
 
 describe("recorridos tácticos", () => {
+  it("aplica cada multiplicador, espera al llegar y conserva el ritmo lento al finalizar", () => {
+    const track = buildTrack({ x: 0, y: 0 }, [{ x: 1, y: 0 }]);
+    for (const speed of TACTICAL_SPEEDS) {
+      expect(sampleTrack(track, 0.5, speed).x).toBeCloseTo(
+        Math.min(1, speed / 2),
+      );
+      expect(sampleTrack(track, 1, speed).x).toBeCloseTo(Math.min(1, speed));
+      expect(sampleTrack(track, -0.5, speed)).toEqual({ x: 0, y: 0 });
+    }
+    expect(sampleTrack(track, 0.5, 2)).toEqual({ x: 1, y: 0 });
+    expect(sampleTrack(track, 0.9, 2)).toEqual({ x: 1, y: 0 });
+    expect(sampleTrack(track, 0.8, 1.5)).toEqual({ x: 1, y: 0 });
+    expect(sampleTrack(track, 1, 0.75)).toEqual({ x: 0.75, y: 0 });
+    expect(sampleTrack(track, 0.4)).toEqual(sampleTrack(track, 0.4, 1));
+  });
+  it("incluye velocidades en la firma online independientemente del orden de sus claves", () => {
+    const first = {
+      ...emptyTactics,
+      speeds: { a: 2 as const, b: 0.75 as const },
+    };
+    const reordered = { ...first, speeds: { b: 0.75 as const, a: 2 as const } };
+    expect(tacticalSignature("formation", first, [])).toBe(
+      tacticalSignature("formation", reordered, []),
+    );
+    expect(tacticalSignature("formation", first, [])).not.toBe(
+      tacticalSignature(
+        "formation",
+        { ...first, speeds: { ...first.speeds, a: 1 } },
+        [],
+      ),
+    );
+    expect(tacticalSignature("formation", emptyTactics, [])).not.toBe(
+      tacticalSignature("other", emptyTactics, []),
+    );
+  });
   it("recorre cada tramo a velocidad uniforme y llega al destino", () => {
     const track = buildTrack({ x: 0, y: 0 }, [
       { x: 1, y: 0 },

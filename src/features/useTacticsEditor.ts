@@ -4,6 +4,7 @@ import type {
   TacticalPoint,
   Tactics,
   TacticsConfig,
+  TacticalSpeed,
 } from "../lib/model";
 
 export function useTacticsEditor(
@@ -77,6 +78,7 @@ export function useTacticsEditor(
         await save(
           {
             routes: { ...tactics.routes, [draft.playerId]: points },
+            speeds: tactics.speeds,
             duration_ms: tactics.duration_ms,
           },
           draft.version,
@@ -124,7 +126,10 @@ export function useTacticsEditor(
     if (draft.points.length) routes[draft.playerId] = draft.points;
     else delete routes[draft.playerId];
     await run(async () => {
-      await save({ routes, duration_ms: tactics.duration_ms }, draft.version);
+      await save(
+        { routes, speeds: tactics.speeds, duration_ms: tactics.duration_ms },
+        draft.version,
+      );
       setDraft((old) =>
         old
           ? { ...old, basePoints: old.points, version: tactics.version + 1 }
@@ -141,7 +146,10 @@ export function useTacticsEditor(
     const routes = { ...tactics.routes };
     delete routes[draft.playerId];
     await run(async () => {
-      await save({ routes, duration_ms: tactics.duration_ms }, draft.version);
+      await save(
+        { routes, speeds: tactics.speeds, duration_ms: tactics.duration_ms },
+        draft.version,
+      );
       setDraft({
         ...draft,
         points: [],
@@ -184,12 +192,33 @@ export function useTacticsEditor(
     reload: () => {
       if (selected) load(selected);
     },
+    speed: (player: Player, speed: TacticalSpeed) =>
+      run(async () => {
+        if (player.placement !== "field") return;
+        await save(
+          {
+            routes: tactics.routes,
+            duration_ms: tactics.duration_ms,
+            speeds: { ...tactics.speeds, [player.id]: speed },
+          },
+          tactics.version,
+        );
+      }),
     duration: (duration_ms: number) =>
-      run(() => save({ routes: tactics.routes, duration_ms }, tactics.version)),
+      run(() =>
+        save(
+          { routes: tactics.routes, speeds: tactics.speeds, duration_ms },
+          tactics.version,
+        ),
+      ),
     clear: () =>
       run(async () => {
         await save(
-          { routes: {}, duration_ms: tactics.duration_ms },
+          {
+            routes: {},
+            speeds: tactics.speeds,
+            duration_ms: tactics.duration_ms,
+          },
           tactics.version,
         );
         setDraft(null);

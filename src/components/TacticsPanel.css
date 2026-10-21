@@ -118,6 +118,27 @@
 .board-app .tactics-panel .overlay {
   overflow: auto;
 }
+.player-speed-overlay {
+  z-index: 40;
+}
+.player-speed-modal {
+  width: min(390px, 100%);
+}
+.player-speed-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.player-speed-options button {
+  padding: 10px 2px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.player-speed-options button[aria-pressed="true"] {
+  background: var(--selected);
+  color: var(--on-selected);
+}
 @media (max-height: 500px) {
   .board-app .sidebar .tactics-panel {
     padding: 4px 10px;

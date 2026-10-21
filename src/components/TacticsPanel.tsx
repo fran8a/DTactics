@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Save,
+  Gauge,
   Pause,
   Play,
   RotateCcw,
@@ -23,6 +24,7 @@ type Props = {
   disabled: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  onSpeed: (player: Player) => void;
   onUndo: () => Promise<void>;
   onRedo: () => Promise<void>;
 };
@@ -104,6 +106,7 @@ export default function TacticsPanel({
   disabled,
   canUndo,
   canRedo,
+  onSpeed,
   onUndo,
   onRedo,
 }: Props) {
@@ -166,6 +169,16 @@ export default function TacticsPanel({
               ))}
           </select>
           <div className="tactics-edit-actions">
+            <button
+              type="button"
+              className="tactics-icon"
+              aria-label="Velocidad del jugador"
+              title="Velocidad del jugador"
+              disabled={blocked || editor.dirty || !editor.selected}
+              onClick={() => onSpeed(editor.selected!)}
+            >
+              <Gauge size={14} />
+            </button>
             <button
               type="button"
               className="tactics-icon"

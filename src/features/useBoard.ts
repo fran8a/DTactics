@@ -851,6 +851,7 @@ export function useBoard(
           p_board: id,
           p_formation: active.current,
           p_routes: config.routes,
+          p_speeds: config.speeds,
           p_duration_ms: config.duration_ms,
           p_version: version,
           p_operation: operation,
@@ -864,11 +865,7 @@ export function useBoard(
     }
   };
   const broadcastPlayback = useCallback(
-    (
-      action: "play" | "pause" | "reset",
-      elapsed = 0,
-      signature?: string,
-    ) => {
+    (action: "play" | "pause" | "reset", elapsed = 0, signature?: string) => {
       if (!online.current || !active.current) return;
       void channel.current?.send({
         type: "broadcast",

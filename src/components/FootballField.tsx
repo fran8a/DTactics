@@ -11,7 +11,7 @@ import {
   Arrow,
   RegularPolygon,
 } from "react-konva";
-import type Konva from "konva";
+import Konva from "konva";
 import { usePitchColors, type PitchColors } from "./usePitchColors";
 import { usePlayerDrag, type DragCallbacks } from "./usePlayerDrag";
 import {
@@ -24,6 +24,7 @@ import {
   type Participant,
   type TacticalPoint,
   type Ball,
+  type TacticalSpeed,
 } from "../lib/model";
 type Props = DragCallbacks & {
   players: Player[];
@@ -35,6 +36,7 @@ type Props = DragCallbacks & {
   now: number;
   enabled: boolean;
   onSelect: (p: Player) => void;
+  speeds?: Record<string, TacticalSpeed>;
   routes?: Record<string, TacticalPoint[]>;
   routePlayers?: Player[];
   preparing?: boolean;
@@ -42,10 +44,12 @@ type Props = DragCallbacks & {
   selectedRoute?: string | null;
   draftPoints?: TacticalPoint[];
   onRouteSelect?: (player: Player) => void;
+  onSpeedSelect?: (player: Player) => void;
   onArrowSelect?: (player: Player) => void;
   onWaypointSave?: (point: TacticalPoint) => void;
   onWaypoint?: (point: TacticalPoint) => void;
   onWaypointChange?: (index: number, point: TacticalPoint) => void;
+  onTokenPosition?: (id: string, position: TacticalPoint) => void;
 };
 export default function FootballField(props: Props) {
   const colors = usePitchColors();
@@ -53,6 +57,15 @@ export default function FootballField(props: Props) {
   const [width, setWidth] = useState(500);
   const [availableHeight, setAvailableHeight] = useState(800);
   const ballNode = useRef<Konva.Group>(null);
+  const routeArrows = useRef(new Map<string, Konva.Arrow>());
+  const moveRouteOrigin = (id: string, position: TacticalPoint) => {
+    const arrow = routeArrows.current.get(id);
+    if (!arrow) return;
+    const points = arrow.points();
+    if (points[0] === position.x && points[1] === position.y) return;
+    arrow.points([position.x, position.y, ...points.slice(2)]);
+    arrow.getLayer()?.batchDraw();
+  };
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width: availableWidth, height: availableHeight } =
@@ -297,6 +310,10 @@ export default function FootballField(props: Props) {
                 return (
                   <Group key={player.id}>
                     <Arrow
+                      ref={(node) => {
+                        if (node) routeArrows.current.set(player.id, node);
+                        else routeArrows.current.delete(player.id);
+                      }}
                       listening={props.enabled && !props.playbackLocked}
                       hitStrokeWidth={18}
                       onPointerDown={(event) => {
@@ -304,7 +321,7 @@ export default function FootballField(props: Props) {
                         props.onArrowSelect?.(player);
                       }}
                       points={[
-                        { x: player.x, y: player.y },
+                        props.players.find((p) => p.id === player.id) ?? player,
                         ...points.slice(-1),
                       ].flatMap((p) => {
                         const s = screenPoint(p);
@@ -440,6 +457,7 @@ export default function FootballField(props: Props) {
                 height={height}
                 index={index}
                 {...props}
+                onTokenPosition={moveRouteOrigin}
               />
             ))}
           </Layer>
@@ -463,6 +481,37 @@ function Token({
   colors: PitchColors;
 }) {
   const node = useRef<Konva.Group>(null);
+  const routeClick = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function cancelRouteClick() {
+    if (routeClick.current !== null) clearTimeout(routeClick.current);
+    routeClick.current = null;
+  }
+  useEffect(() => cancelRouteClick, [props.preparing, props.playbackLocked]);
+  function selectRoute() {
+    if (
+      !props.preparing ||
+      props.playbackLocked ||
+      !props.enabled ||
+      lock ||
+      !drag.canEdit() ||
+      player.placement !== "field"
+    )
+      return;
+    cancelRouteClick();
+    // Wait for a possible double click before committing a pass to this player.
+    routeClick.current = setTimeout(() => {
+      routeClick.current = null;
+      props.onRouteSelect?.(player);
+    }, Konva.dblClickWindow);
+  }
+  function openConfiguration() {
+    cancelRouteClick();
+    if (!props.enabled || props.playbackLocked || lock || !drag.canEdit())
+      return;
+    if (props.preparing) {
+      if (player.placement === "field") props.onSpeedSelect?.(player);
+    } else props.onSelect(player);
+  }
   const lock = props.locks.find(
     (l) => l.player_id === player.id && Date.parse(l.expires_at) > props.now,
   );
@@ -504,11 +553,13 @@ function Token({
       props.players.filter(
         (p) => p.team === player.team && p.placement === "field",
       ).length < props.playersPerTeam,
-    enabled: props.enabled && !props.preparing && !props.playbackLocked,
+    enabled: props.enabled && !props.playbackLocked,
     lock,
     begin: props.begin,
     moving: props.moving,
     end: props.end,
+    onPositionChange: (position) =>
+      props.onTokenPosition?.(player.id, position),
   });
   const muted = drag.dragOutside ?? player.placement === "bench";
   return (
@@ -517,20 +568,16 @@ function Token({
       x={display.x}
       y={display.y}
       draggable={false}
-      onDblClick={() => {
-        if (!props.preparing && !props.playbackLocked && drag.canEdit())
-          props.onSelect(player);
-      }}
-      onDblTap={() => {
-        if (!props.preparing && !props.playbackLocked && drag.canEdit())
-          props.onSelect(player);
-      }}
+      onClick={selectRoute}
+      onTap={selectRoute}
+      onDblClick={openConfiguration}
+      onDblTap={openConfiguration}
       onPointerDown={(event) => {
+        cancelRouteClick();
         if (props.preparing) {
           event.cancelBubble = true;
-          if (!props.playbackLocked && player.placement === "field")
-            props.onRouteSelect?.(player);
-        } else drag.onPointerDown(event);
+        }
+        drag.onPointerDown(event);
       }}
       onMouseEnter={() => {
         if (node.current)
@@ -593,6 +640,35 @@ function Token({
         shadowColor="#102c20"
         shadowBlur={muted ? 0 : 3}
       />
+      {player.placement === "field" &&
+        (props.preparing ||
+          props.playbackLocked ||
+          !!props.routes?.[player.id]?.length) && (
+          <Group
+            x={display.x > width - 75 ? -60 : 21}
+            y={-27}
+            listening={false}
+          >
+            <Rect
+              width={42}
+              height={19}
+              cornerRadius={5}
+              fill="#102c20"
+              stroke="#ffffffa0"
+              strokeWidth={1}
+            />
+            <Text
+              width={42}
+              height={19}
+              verticalAlign="middle"
+              align="center"
+              text={`x${props.speeds?.[player.id] ?? 1}`}
+              fontSize={12}
+              fontStyle="bold"
+              fill="white"
+            />
+          </Group>
+        )}
       {lock && (
         <Text
           x={-75}

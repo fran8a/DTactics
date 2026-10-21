@@ -66,6 +66,8 @@ export default function BoardPage({
     board.data?.formation.id,
     players,
     tactics,
+    board.playbackSignal,
+    board.broadcastPlayback,
   );
   const tacticEditor = useTacticsEditor(
     board.data?.formation.id,
@@ -73,6 +75,9 @@ export default function BoardPage({
     tactics,
     board.saveTactics,
   );
+  useEffect(() => {
+    if (playback.locked && tacticEditor.preparing) tacticEditor.close();
+  }, [playback.locked, tacticEditor.preparing]);
   const [palettePending, setPalettePending] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const mobile = useMobileLayout();

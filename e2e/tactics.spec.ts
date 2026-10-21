@@ -236,8 +236,10 @@ test("jugadas: edición colaborativa, conflicto, reproducción local sin escritu
     await expect(
       page.getByRole("button", { name: "Preparar jugada", exact: true }),
     ).toBeDisabled();
-    await expect(remote.getByRole("progressbar")).toHaveCount(0);
-    await expect.poll(() => orangeAt(remote, a)).toBe(true);
+    await expect(
+      remote.getByRole("progressbar", { name: "Progreso de la jugada" }),
+    ).toBeVisible();
+    await expect.poll(() => orangeAt(remote, expectedPosition)).toBe(true);
     await page
       .getByRole("button", { name: "Continuar jugada", exact: true })
       .click();

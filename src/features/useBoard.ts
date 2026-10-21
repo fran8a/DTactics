@@ -15,8 +15,17 @@ import {
   type Snapshot,
   type TacticsConfig,
 } from "../lib/model";
+import { emptyTactics, tacticalSignature } from "../lib/tactics";
 
 type Preview = { x: number; y: number; lease: string; seq: number };
+export type PlaybackSignal = {
+  id: number;
+  formation: string;
+  action: "play" | "pause" | "reset";
+  elapsed: number;
+  signature?: string;
+  receivedAt: number;
+};
 type Drag = {
   id: string;
   lease: string;
@@ -39,6 +48,10 @@ export function useBoard(
   const [fatal, setFatal] = useState(false);
   const [people, setPeople] = useState<Participant[]>([]);
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
+  const [playbackSignal, setPlaybackSignal] = useState<PlaybackSignal | null>(
+    null,
+  );
+  const playbackSeq = useRef(0);
   const [now, setNow] = useState(Date.now());
   const active = useRef<string | null>(initialFormation);
   const [selection, setSelection] = useState<string | null>(initialFormation);
@@ -48,6 +61,9 @@ export function useBoard(
   const pendingRef = useRef(0);
   const [dragging, setDragging] = useState(false);
   const current = useRef<Snapshot | null>(null);
+  const leaseExpiry = useRef<Record<string, { raw: string; local: string }>>(
+    {},
+  );
   const channel = useRef<RealtimeChannel | null>(null);
   const drag = useRef<Drag | null>(null);
   const uid = useRef("");
@@ -82,10 +98,28 @@ export function useBoard(
       incoming.formations.some((f) => f.id === active.current)
     )
       return;
-    const next =
+    const accepted =
       current.current?.formation.id === incoming.formation.id
         ? acceptSnapshot(current.current, incoming)
         : incoming;
+    const updatedAt = Date.parse(
+      (accepted.board as { updated_at?: string }).updated_at ?? "",
+    );
+    const next: Snapshot = {
+      ...accepted,
+      locks: accepted.locks.map((l) => {
+        const cached = leaseExpiry.current[l.lease_id];
+        if (cached?.raw === l.expires_at)
+          return { ...l, expires_at: cached.local };
+        const rawMs = Date.parse(l.expires_at);
+        const ttl = Number.isFinite(updatedAt)
+          ? Math.min(12_000, Math.max(4_000, rawMs - updatedAt))
+          : 12_000;
+        const local = new Date(Math.max(rawMs, Date.now() + ttl)).toISOString();
+        leaseExpiry.current[l.lease_id] = { raw: l.expires_at, local };
+        return { ...l, expires_at: local };
+      }),
+    };
     active.current = next.formation.id;
     setSelection(next.formation.id);
     current.current = next;
@@ -324,6 +358,46 @@ export function useBoard(
                 [p.id]: { x: p.x, y: p.y, lease: p.lease, seq: p.seq },
               },
         );
+      });
+      c.on("broadcast", { event: "tactics_playback" }, ({ payload }) => {
+        const p = payload as {
+          formation_id?: string;
+          action?: string;
+          elapsed?: number;
+          signature?: string;
+        };
+        if (
+          !p ||
+          p.formation_id !== active.current ||
+          (p.action !== "play" &&
+            p.action !== "pause" &&
+            p.action !== "reset") ||
+          (p.action !== "reset" &&
+            (typeof p.elapsed !== "number" ||
+              !Number.isFinite(p.elapsed) ||
+              p.elapsed < 0))
+        )
+          return;
+        const sig = typeof p.signature === "string" ? p.signature : undefined;
+        setPlaybackSignal({
+          id: ++playbackSeq.current,
+          formation: p.formation_id,
+          action: p.action,
+          elapsed: p.action === "reset" ? 0 : p.elapsed!,
+          signature: sig,
+          receivedAt: performance.now(),
+        });
+        if (
+          p.action !== "reset" &&
+          sig &&
+          current.current &&
+          tacticalSignature(
+            current.current.formation.id,
+            current.current.tactics ?? emptyTactics,
+            current.current.players,
+          ) !== sig
+        )
+          void refresh();
       });
       c.on("presence", { event: "sync" }, () => {
         if (disposed || expired || ownChannel !== c) return;
@@ -672,6 +746,7 @@ export function useBoard(
     active.current = formation;
     setSelection(formation);
     setPreviews({});
+    setPlaybackSignal(null);
     await run(() => refreshRef.current());
   };
   useEffect(() => {
@@ -788,6 +863,26 @@ export function useBoard(
       throw e;
     }
   };
+  const broadcastPlayback = useCallback(
+    (
+      action: "play" | "pause" | "reset",
+      elapsed = 0,
+      signature?: string,
+    ) => {
+      if (!online.current || !active.current) return;
+      void channel.current?.send({
+        type: "broadcast",
+        event: "tactics_playback",
+        payload: {
+          formation_id: active.current,
+          action,
+          elapsed,
+          signature,
+        },
+      });
+    },
+    [],
+  );
   const stacks = selection
     ? (histories.current[selection] ?? emptyHistory())
     : emptyHistory();
@@ -798,6 +893,8 @@ export function useBoard(
     fatal,
     people,
     previews,
+    playbackSignal,
+    broadcastPlayback,
     now,
     change,
     begin,

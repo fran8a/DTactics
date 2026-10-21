@@ -132,7 +132,7 @@ export default function FootballField(props: Props) {
     horizontal: props.horizontal,
     position: ballDisplay,
     canEnterField: true,
-    enabled: props.enabled && !props.preparing && !props.playbackLocked,
+    enabled: props.enabled && !props.preparing,
     lock: ballLock,
     constrainPosition: constrainBall,
     begin: props.begin,
@@ -388,7 +388,7 @@ export default function FootballField(props: Props) {
                 if (stage)
                   stage.container().style.cursor = ballLock
                     ? "not-allowed"
-                    : props.enabled && !props.preparing && !props.playbackLocked
+                    : props.enabled && !props.preparing
                       ? "grab"
                       : "default";
               }}

@@ -1,5 +1,5 @@
 {
-  "name": "dtactics",
+  "name": "bizarron",
   "version": "1.0.0",
   "description": "",
   "scripts": {
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fran8a/DTactics.git"
+    "url": "git+https://github.com/fran8a/bizarron.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/fran8a/DTactics/issues"
+    "url": "https://github.com/fran8a/bizarron/issues"
   },
-  "homepage": "https://github.com/fran8a/DTactics#readme",
+  "homepage": "https://github.com/fran8a/bizarron#readme",
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",
     "konva": "10.9.0",

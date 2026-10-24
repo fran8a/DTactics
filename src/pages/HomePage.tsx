@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Plus, Users, Radio, Move } from "lucide-react";
 import { configured, createBoard } from "../lib/api";
-import { SocialLinks, Logo, Nickname } from "../components/Identity";
+import { SocialLinks, Nickname } from "../components/Identity";
 import LandingPitch from "../components/LandingPitch";
 import ThemeToggle from "../components/ThemeToggle";
 import GuideBalls from "../components/GuideBalls";
@@ -57,7 +57,16 @@ export default function Home() {
     <div className="home">
       <div className="home-layout" ref={layout}>
         <header className="home-header">
-          <Logo />
+          <Link to="/" className="logo home-logo" aria-label="Bizarrón, inicio">
+            <img
+              src="/favicon.png?v=bizarron"
+              alt=""
+              aria-hidden="true"
+              width="56"
+              height="56"
+            />
+            izarrón
+          </Link>
           <span className="header-tag">
             <i className="dot" /> FÚTBOL, ENTRE TODOS.
           </span>

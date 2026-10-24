@@ -1,6 +1,6 @@
-# Reporte Integral de Auditoría Técnica, Seguridad, Rendimiento, UX/UI y Estrategias de Negocio: DTactics
+# Reporte Integral de Auditoría Técnica, Seguridad, Rendimiento, UX/UI y Estrategias de Negocio: Bizarrón
 
-**Proyecto:** DTactics (`bizarron.vercel.app` / Supabase `zwpjwxsqzlfayogazkry`)  
+**Proyecto:** Bizarrón (`bizarron.vercel.app` / Supabase `zwpjwxsqzlfayogazkry`)
 **Fecha de Auditoría:** Octubre 2026  
 **Tipo de Análisis:** Auditoría de Código Estático (SAST), Análisis Dinámico de Pruebas (DAST/E2E), Revisión de Arquitectura Cloud (Supabase + Vercel), Evaluación Criptográfica/Autorización y Plan de Monetización.  
 **Estado del Código:** Intacto (Sin alteraciones aplicadas, según directiva explícita).
@@ -13,14 +13,14 @@
 3. [Navegabilidad, Accesibilidad y Flujo de Usuario](#3-navegabilidad-accesibilidad-y-flujo-de-usuario)
 4. [Rendimiento, Métricas y Optimización de Código](#4-rendimiento-métricas-y-optimización-de-código)
 5. [Evaluación de UX/UI con Evidencia y Pruebas Reales](#5-evaluación-de-uxui-con-evidencia-y-pruebas-reales)
-6. [Estrategias de Monetización para DTactics](#6-estrategias-de-monetización-para-dtactics)
+6. [Estrategias de Monetización para Bizarrón](#6-estrategias-de-monetización-para-bizarrón)
 7. [Matriz de Decisión: Qué Implementar y Qué Descartar](#7-matriz-de-decisión-qué-implementar-y-qué-descartar)
 
 ---
 
 ## 1. Resumen Ejecutivo
 
-DTactics es una aplicación web reactiva y táctica colaborativa en tiempo real para fútbol (Fútbol 7 y 11), construida con:
+Bizarrón es una aplicación web reactiva y táctica colaborativa en tiempo real para fútbol (Fútbol 7 y 11), construida con:
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS v4, React-Konva (Canvas 2D), Lucide Icons, desplegado en **Vercel** como SPA.
 - **Backend / Datos:** Supabase (PostgreSQL 15+ con `pgcrypto`, Anonymous Authentication, RLS en esquemas `public` y `private`, RPC transaccionales y Supabase Realtime Broadcast & Presence).
 
@@ -230,11 +230,11 @@ Total JS sin comprimir: ~857 kB
 
 ---
 
-## 6. Estrategias de Monetización para DTactics
+## 6. Estrategias de Monetización para Bizarrón
 
-DTactics tiene un potencial enorme en el ecosistema del fútbol amateur, ligas de fin de semana, clubes de barrio, torneos de fútbol 5/7/11, creadores de contenido y directores técnicos. Para monetizar sin arruinar la esencia rápida ("gratis, sin vueltas"), se proponen las siguientes líneas de negocio:
+Bizarrón tiene un potencial enorme en el ecosistema del fútbol amateur, ligas de fin de semana, clubes de barrio, torneos de fútbol 5/7/11, creadores de contenido y directores técnicos. Para monetizar sin arruinar la esencia rápida ("gratis, sin vueltas"), se proponen las siguientes líneas de negocio:
 
-### 6.1. Modelo Freemium: "DTactics Pro" (Suscripción DT / Equipos)
+### 6.1. Modelo Freemium: "Bizarrón Pro" (Suscripción DT / Equipos)
 Mantener la pizarra básica gratis y cobrar una suscripción accesible (ej. **$3.99 USD/mes** o **$4.000 ARS/mes** vía Mercado Pago / Stripe):
 - **Funcionalidades Pro:**
   - **Herramientas de Dibujo Táctico:** Flechas de carrera, líneas de pase curvas, conos de entrenamiento, zonas de calor sombreadas.
@@ -265,8 +265,8 @@ Para facilitar tu toma de decisiones sobre los siguientes pasos de desarrollo, l
 | **Captchas / Rate Limit en Creación de Tableros** | Seguridad | Medio | **Medio** | **IMPLEMENTAR (Prioridad 2)** | Previene abusos por DoS que agotan la cuota gratuita de Supabase. |
 | **Actualizar Asertos en Tests E2E de Playwright** | QA / Tests | Bajo | **Bajo** | **IMPLEMENTAR (Prioridad 3)** | Sincronizar el texto de validación de formato en `formats.spec.ts` para tener la suite de integración en 100% verde. |
 | *Reemplazar Konva por SVG / DOM puro* | Arquitectura | Muy Alto | **Bajo** | **DESCARTAR** | Konva maneja canvas 2D con un rendimiento y control de colisiones excelente. Reemplazarlo sería costoso e innecesario. |
-| *Exigir Registro Obligatorio con Contraseña* | Auth | Alto | **Negativo** | **DESCARTAR** | Destruiría la propuesta de valor fundamental de DTactics: *"Gratis. Sin registro. Sin vueltas"*. |
-| *Banners de Publicidad Intrusiva (AdSense)* | Monetización | Bajo | **Negativo** | **DESCARTAR** | Rompería la estética cuidada y degradaría el rendimiento táctil del pizarrón. Es preferible optar por patrocinio nativo o DTactics Pro. |
+| *Exigir Registro Obligatorio con Contraseña* | Auth | Alto | **Negativo** | **DESCARTAR** | Destruiría la propuesta de valor fundamental de Bizarrón: *"Gratis. Sin registro. Sin vueltas"*. |
+| *Banners de Publicidad Intrusiva (AdSense)* | Monetización | Bajo | **Negativo** | **DESCARTAR** | Rompería la estética cuidada y degradaría el rendimiento táctil del pizarrón. Es preferible optar por patrocinio nativo o Bizarrón Pro. |
 
 ---
 

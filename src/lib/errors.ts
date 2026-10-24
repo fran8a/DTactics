@@ -22,7 +22,7 @@ export function errorMessage(error: {
     /function .* does not exist|schema cache/i.test(message)
   )
     return "Falta aplicar la configuración de la base de datos. Revisá las migraciones de Supabase.";
-  if (error.code === "P0001") return message; // Mensajes de las funciones SQL de DTactics.
+  if (error.code === "P0001") return message; // Mensajes de las funciones SQL de Bizarrón.
   if (/JWT|token.*expired|session.*missing/i.test(message))
     return "La sesión venció. Recargá la página para volver a entrar.";
   return "No pudimos completar la operación. Reintentá en unos instantes.";

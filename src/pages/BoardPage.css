@@ -196,6 +196,17 @@
   font-weight: 600;
   color: var(--green-text);
 }
+.board-app .fill-players-button {
+  width: 100%;
+  min-height: 32px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--green-text);
+  font-size: 12px;
+  font-weight: 600;
+}
 .board-app .clear-players-button {
   display: inline-flex;
   align-items: center;

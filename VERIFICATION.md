@@ -1,4 +1,4 @@
-# Verificación de DTactics
+# Verificación de Bizarrón
 
 Fecha: 17/10/2026. Proyecto real: `zwpjwxsqzlfayogazkry` (Bizarron).
 

@@ -1,4 +1,4 @@
-# DTactics
+# Bizarrón
 
 Pizarra táctica colaborativa de fútbol para armar equipos, probar variantes y compartir formaciones en tiempo real.
 

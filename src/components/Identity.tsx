@@ -46,8 +46,8 @@ export function SocialLinks() {
 }
 export function Logo() {
   return (
-    <Link to="/" className="logo" aria-label="DTactics, inicio">
-      DTactics<span>®</span>
+    <Link to="/" className="logo" aria-label="Bizarrón, inicio">
+      Bizarrón<span>®</span>
     </Link>
   );
 }

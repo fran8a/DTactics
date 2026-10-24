@@ -1,16 +1,16 @@
-# DTactics
+# Bizarrón
 
 > Pizarra táctica colaborativa de fútbol para armar equipos y compartir formaciones en tiempo real.
 
-DTactics permite preparar formaciones de fútbol 7 y fútbol 11, organizar jugadores y suplentes, y diseñar recorridos de jugadas. Los participantes con el enlace de acceso pueden editar una pizarra en simultáneo.
+Bizarrón permite preparar formaciones de fútbol 7 y fútbol 11, organizar jugadores y suplentes, y diseñar recorridos de jugadas. Los participantes con el enlace de acceso pueden editar una pizarra en simultáneo.
 
 Las pizarras son temporales y sus enlaces contienen información de acceso. No deben publicarse ni incluirse en índices o documentación pública.
 
 ## Recursos públicos
 
-- [Inicio](/): Abrir DTactics y crear una pizarra.
+- [Inicio](/): Abrir Bizarrón y crear una pizarra.
 - [Reglas de rastreo](/robots.txt): Indicaciones para rastreadores.
 
 ## Integraciones
 
-DTactics no ofrece una API pública para agentes, un servidor MCP ni un agente autónomo.
+Bizarrón no ofrece una API pública para agentes, un servidor MCP ni un agente autónomo.

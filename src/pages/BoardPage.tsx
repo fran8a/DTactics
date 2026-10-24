@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useBoard } from "../features/useBoard";
 import { fieldDrop, freePosition, type Player } from "../lib/model";
+import { fillPlayerPlan } from "../lib/fillPlayers";
 import { useMobileLayout } from "../features/useMobileLayout";
 import MobileOptions from "../components/MobileOptions";
 import PlayerPalette from "../components/PlayerPalette";
@@ -58,7 +59,16 @@ export default function BoardPage({
     [renaming, setRenaming] = useState(false),
     [title, setTitle] = useState(""),
     [saving, setSaving] = useState(false);
-  const players = (board.data?.players ?? []).map((p) => {
+  const [pendingFill, setPendingFill] = useState<Player[]>([]);
+  const [pendingRemoval, setPendingRemoval] = useState<Set<string>>(new Set());
+  const savedIds = new Set(board.data?.players.map((p) => p.id));
+  const visiblePlayers = [
+    ...(board.data?.players ?? []).filter((p) => !pendingRemoval.has(p.id)),
+    ...pendingFill.filter(
+      (p) => p.formation_id === board.data?.formation.id && !savedIds.has(p.id),
+    ),
+  ];
+  const players = visiblePlayers.map((p) => {
     const preview = board.previews[p.id];
     return preview ? { ...p, x: preview.x, y: preview.y } : p;
   });
@@ -87,6 +97,9 @@ export default function BoardPage({
     if (playback.locked && tacticEditor.preparing) tacticEditor.close();
   }, [playback.locked, tacticEditor.preparing]);
   const [palettePending, setPalettePending] = useState(false);
+  const filling = useRef(false);
+  const latestFormation = useRef(board.selection);
+  latestFormation.current = board.selection;
   const [confirmClear, setConfirmClear] = useState(false);
   const mobile = useMobileLayout();
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -276,7 +289,7 @@ export default function BoardPage({
       setSaving(false);
     }
   }
-  const data = board.data;
+  const data = board.data ? { ...board.data, players: visiblePlayers } : null;
   if (!data || board.fatal)
     return (
       <div className="status-page">
@@ -318,6 +331,51 @@ export default function BoardPage({
     confirmClear ||
     playback.locked ||
     tacticEditor.busy;
+  const fillPlan = fillPlayerPlan(data.players, data.board.players_per_team);
+  async function fillPlayers() {
+    if (!data || filling.current || controlsDisabled || tacticEditor.preparing)
+      return;
+    filling.current = true;
+    setSaving(true);
+    setLocalError("");
+    const formation = data.formation.id;
+    const numbers = {
+      A: Math.max(
+        0,
+        ...data.players.filter((p) => p.team === "A").map((p) => p.number),
+      ),
+      B: Math.max(
+        0,
+        ...data.players.filter((p) => p.team === "B").map((p) => p.number),
+      ),
+    };
+    const additions: Player[] = fillPlan.map((point) => ({
+      ...point,
+      id: crypto.randomUUID(),
+      board_id: id,
+      formation_id: formation,
+      placement: "field",
+      name: "Jugador",
+      number: ++numbers[point.team],
+      version: 1,
+    }));
+    setPendingFill(additions);
+    try {
+      for (const player of additions) {
+        if (latestFormation.current !== formation)
+          throw new Error(
+            "La formación cambió. Volvé a rellenar la cancha actual.",
+          );
+        await board.quickAdd(player.team, player.id, player.x, player.y);
+      }
+    } catch (e) {
+      setLocalError((e as Error).message);
+    } finally {
+      setPendingFill([]);
+      filling.current = false;
+      setSaving(false);
+    }
+  }
   const sidebarContent = (
     <>
       <FormationTabs
@@ -393,6 +451,20 @@ export default function BoardPage({
           {formatBlocked && !data.players.length && (
             <p className="format-hint">Hay cambios pendientes.</p>
           )}
+          <button
+            type="button"
+            className="fill-players-button"
+            disabled={
+              controlsDisabled ||
+              tacticEditor.preparing ||
+              fillPlan.length === 0 ||
+              data.players.length + fillPlan.length > 40
+            }
+            title={`Completar ambos equipos con ${data.board.players_per_team} jugadores en cancha`}
+            onClick={() => void fillPlayers()}
+          >
+            Rellenar
+          </button>
         </div>
       </section>
       <section className="roster">
@@ -432,6 +504,7 @@ export default function BoardPage({
                         className={`roster-player team-${team}`}
                         aria-label={`Editar ${p.name}, número ${p.number}, equipo ${team}`}
                         disabled={
+                          saving ||
                           !board.connected ||
                           playback.locked ||
                           tacticEditor.busy ||
@@ -691,7 +764,7 @@ export default function BoardPage({
                   locks={data.locks}
                   people={board.people}
                   now={board.now}
-                  enabled={board.connected && !confirmClear}
+                  enabled={board.connected && !confirmClear && !saving}
                   onSelect={setEditor}
                   begin={board.begin}
                   moving={board.moving}
@@ -736,11 +809,13 @@ export default function BoardPage({
           onClose={() => setConfirmClear(false)}
           onConfirm={async () => {
             setSaving(true);
+            setPendingRemoval(new Set(data.players.map((p) => p.id)));
             try {
               for (const player of data.players) {
                 await board.change("delete", player.id, {}, player.version);
               }
             } finally {
+              setPendingRemoval(new Set());
               setSaving(false);
             }
           }}

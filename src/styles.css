@@ -74,6 +74,20 @@ button svg {
   vertical-align: top;
   margin: 3px 0 0 5px;
 }
+.home-header .home-logo {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.home-logo img {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-left: -0.27em;
+  margin-right: -0.18em;
+  transform: translateY(0.08em);
+  object-fit: contain;
+}
 .home-header {
   height: 80px;
   max-width: 1360px;

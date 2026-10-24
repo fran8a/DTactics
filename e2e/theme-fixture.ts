@@ -5,6 +5,9 @@ export async function themeBoardFixture(
   page: Page,
   dragPermissionDelay = 0,
   allowDrags = false,
+  additionDelay = 0,
+  deletionDelay = 0,
+  failDeletion = false,
 ) {
   const id = "00000000-0000-4000-8000-000000000001";
   const formation = {
@@ -72,12 +75,19 @@ export async function themeBoardFixture(
           selection: '${id}', previews: {}, people: [{user_id:'qa', tab:'qa', name:'QA', color:'#569cfa'}], now: Date.now(),
           busy: false, dragging: false, canUndo: false, canRedo: false,
           refresh: async () => {}, dismissError: () => setError(''),
-          change: async (action, pid, values) => setData(old => ({...old, players: action === 'delete'
+          change: async (action, pid, values) => {
+            if (action === 'delete') {
+              await new Promise(resolve => setTimeout(resolve, ${deletionDelay}));
+              if (${failDeletion}) throw new Error('No se pudo guardar');
+            }
+            setData(old => ({...old, players: action === 'delete'
             ? old.players.filter(p => p.id !== pid)
-            : old.players.map(p => p.id === pid ? {...p, ...values, version:p.version+1} : p)})),
-          quickAdd: async (team, pid, x, y) => setData(old => ({...old, players: [...old.players, {
+            : old.players.map(p => p.id === pid ? {...p, ...values, version:p.version+1} : p)})); },
+          quickAdd: async (team, pid, x, y) => {
+            await new Promise(resolve => setTimeout(resolve, ${additionDelay}));
+            setData(old => ({...old, players: [...old.players, {
             id:pid, board_id:'${id}', formation_id:'${id}', name:'Nuevo', number:9, team, placement:'field', x, y, version:1
-          }]})),
+          }]})); },
           saveTactics: async config => setData(old => ({...old, tactics:{...config, version:old.tactics.version+1}})),
           updateBoard: async name => setData(old => ({...old, board:{...old.board, name}})),
           changeFormat: async players_per_team => setData(old => ({...old, board:{...old.board, players_per_team}})),
